@@ -1,16 +1,19 @@
 var path = require('path');
+const HtmlWebPackPlugin = require("html-webpack-plugin");
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 
 module.exports = {
   module: {
-    rules: [{
-        test: /\.html$/,
-        exclude: /node_modules/,
-        loader: 'file-loader?name=[name].[ext]'
-      },
+    rules: [
       {
-        test: /\.css$/,
-        exclude: /node_modules/,
-        loader: 'file-loader?name=[name].[ext]'
+        test: /\.(sa|sc|c)ss$/,
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          'postcss-loader'
+        ]
       },
       {
         test: /\.elm$/,
@@ -20,16 +23,20 @@ module.exports = {
           debug: true
         }
       },
-      {
-        test: /\.css$/,
-        use: [ 'postcss-loader' ]
-      }
     ]
   },
   plugins: [
-    require('tailwindcss'),
-    require('autoprefixer'),
+    new MiniCssExtractPlugin({
+      filename: "main.css",
+      chunkFilename: "main.css"
+    }),
+    new HtmlWebPackPlugin({
+      template: './src/index.html'
+    }),
   ],
+  optimization: {
+    minimizer: [new TerserPlugin(), new OptimizeCSSAssetsPlugin()],
+  },
   devServer: {
     inline: true,
     stats: 'errors-only'

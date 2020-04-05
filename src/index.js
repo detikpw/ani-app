@@ -1,7 +1,6 @@
 
 
-require('./index.html');
-require('./main.css');
+import './main.css';
 const Elm = require('./Main.elm').Elm;
 
 const app = Elm.Main.init({

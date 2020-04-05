@@ -3,6 +3,7 @@ module Main exposing (main)
 import Browser
 import Html exposing (..)
 import Html.Attributes exposing (class)
+import Html.Events exposing(onClick)
 
 
 main : Program () Model Msg
@@ -37,7 +38,9 @@ navMenuItems =
 
 viewNavItem : String -> Html msg
 viewNavItem label =
-    div [ class "text-white px-2" ]
+    div [ class "text-white px-2 flex flex-row items-center"
+        , class "border-b border-red-500 h-full"
+        ]
         [ text label ]
 
 
@@ -49,7 +52,7 @@ viewNavMenu =
 
 viewNav : Html msg
 viewNav =
-    div [ class "flex flex-row mx-auto" ]
+    div [ class "flex flex-row mx-auto h-full" ]
         [ viewNavMenu ]
 
 
