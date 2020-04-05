@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, classList)
 import Html.Events exposing (onClick)
 
 
@@ -15,58 +15,87 @@ main =
         }
 
 
+type NavItem
+    = Transport
+    | Tickets
+
+-- Model
+
 type alias Model =
-    Int
+    { activeNavItem : NavItem }
 
 
 init : Model
 init =
-    0
+    { activeNavItem = Transport }
 
 
 type Msg
-    = Test
+    = SetNavItem NavItem
 
 
+-- Update
 update : Msg -> Model -> Model
 update msg model =
     case msg of
-        Test ->
-            Debug.todo "Test dulu gan"
+        SetNavItem activeNav ->
+            { model | activeNavItem = activeNav }
 
+-- Converter
 
-navMenuItems : List String
-navMenuItems =
-    [ "Transport", "Tickets" ]
+navItemsToLabel : NavItem -> String
+navItemsToLabel navItem =
+    case navItem of
+        Transport -> "Transport"
+            
+        Tickets -> "Tickets"
+            
+    
 
+-- View
 
-viewNavItem : String -> Html msg
-viewNavItem label =
+viewNavItem : NavItem -> NavItem -> Html Msg
+viewNavItem activeNavItem navItem =
+    let
+        isActiveNav =
+            activeNavItem == navItem
+    in
+    
     li
-        [ class "text-white px-2 flex items-center"
-        , class "border-b border-red-500 h-full"
+        [ classList
+            [ ("text-white px-2 inline-flex items-center h-full cursor-pointer", True)
+            , ("border-b-2 border-red-500", isActiveNav)
+            ]
+        , onClick <| SetNavItem navItem
         ]
-        [ text label ]
+        [ text <| navItemsToLabel navItem ]
 
 
-viewNavMenu : Html msg
-viewNavMenu =
-    ul [ class "inline-flex items-center list-none" ] <|
-        List.map viewNavItem navMenuItems
+viewNavMenu : NavItem -> Html Msg
+viewNavMenu activeNavItem =
+    ul [ class "inline list-none" ] <|
+        List.map (viewNavItem activeNavItem) navMenuItems
 
 
-viewNav : Html msg
-viewNav =
+viewNav : NavItem -> Html Msg
+viewNav activeNavItem =
     div [ class "flex flex-row mx-auto h-full" ]
-        [ viewNavMenu ]
+        [ viewNavMenu activeNavItem ]
 
 
-viewHeader : Html msg
-viewHeader =
+viewHeader : Model -> Html Msg
+viewHeader model =
     header [ class "flex flex-row items-center bg-alt-1 h-12" ]
-        [ viewNav ]
+        [ viewNav model.activeNavItem ]
 
 
-view : Model -> Html msg
+view : Model -> Html Msg
 view model =
-    viewHeader
+    viewHeader model
+
+
+-- Const
+
+navMenuItems : List NavItem
+navMenuItems =
+    [ Transport, Tickets ]
