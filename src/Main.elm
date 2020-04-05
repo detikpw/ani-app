@@ -18,8 +18,14 @@ main =
 type NavItem
     = Transport
     | Tickets
+    | Hotels
+    | Cars
+    | More
+
+
 
 -- Model
+
 
 type alias Model =
     { activeNavItem : NavItem }
@@ -34,25 +40,43 @@ type Msg
     = SetNavItem NavItem
 
 
+
 -- Update
+
+
 update : Msg -> Model -> Model
 update msg model =
     case msg of
         SetNavItem activeNav ->
             { model | activeNavItem = activeNav }
 
+
+
 -- Converter
+
 
 navItemsToLabel : NavItem -> String
 navItemsToLabel navItem =
     case navItem of
-        Transport -> "Transport"
-            
-        Tickets -> "Tickets"
-            
-    
+        Transport ->
+            "Transport"
+
+        Tickets ->
+            "Tickets"
+
+        Hotels ->
+            "Hotels"
+
+        Cars ->
+            "Cars"
+
+        More ->
+            "More"
+
+
 
 -- View
+
 
 viewNavItem : NavItem -> NavItem -> Html Msg
 viewNavItem activeNavItem navItem =
@@ -60,11 +84,10 @@ viewNavItem activeNavItem navItem =
         isActiveNav =
             activeNavItem == navItem
     in
-    
     li
         [ classList
-            [ ("text-white px-2 inline-flex items-center h-full cursor-pointer", True)
-            , ("border-b-2 border-red-500", isActiveNav)
+            [ ( "text-white px-2 inline-flex items-center h-full cursor-pointer", True )
+            , ( "border-b-2 border-red-500", isActiveNav )
             ]
         , onClick <| SetNavItem navItem
         ]
@@ -94,8 +117,10 @@ view model =
     viewHeader model
 
 
+
 -- Const
+
 
 navMenuItems : List NavItem
 navMenuItems =
-    [ Transport, Tickets ]
+    [ Transport, Tickets, Hotels, Cars, More ]
