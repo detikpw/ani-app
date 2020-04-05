@@ -86,8 +86,9 @@ viewNavItem activeNavItem navItem =
     in
     li
         [ classList
-            [ ( "text-white px-2 inline-flex items-center h-full cursor-pointer", True )
-            , ( "border-b-2 border-red-500", isActiveNav )
+            [ ( "text-white px-2 inline-flex items-center", True )
+            , ( "h-full cursor-pointer hover:text-alt-2", True )
+            , ( "border-b-2 border-alt-2", isActiveNav )
             ]
         , onClick <| SetNavItem navItem
         ]
@@ -96,14 +97,22 @@ viewNavItem activeNavItem navItem =
 
 viewNavMenu : NavItem -> Html Msg
 viewNavMenu activeNavItem =
-    ul [ class "inline list-none" ] <|
+    ul [ class "inline list-none mr-auto" ] <|
+        List.map (viewNavItem activeNavItem) navMenuItems
+
+
+viewNavMenu2 : NavItem -> Html Msg
+viewNavMenu2 activeNavItem =
+    ul [ class "inline list-none ml-auto" ] <|
         List.map (viewNavItem activeNavItem) navMenuItems
 
 
 viewNav : NavItem -> Html Msg
 viewNav activeNavItem =
-    div [ class "flex flex-row mx-auto h-full" ]
-        [ viewNavMenu activeNavItem ]
+    div [ class "flex flex-row mx-auto h-full w-10/12" ]
+        [ viewNavMenu activeNavItem
+        , viewNavMenu2 activeNavItem
+        ]
 
 
 viewHeader : Model -> Html Msg
