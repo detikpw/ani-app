@@ -78,8 +78,8 @@ navItemsToLabel navItem =
 -- View
 
 
-viewNavItem : NavItem -> NavItem -> Html Msg
-viewNavItem activeNavItem navItem =
+viewNavMenuItem : NavItem -> NavItem -> Html Msg
+viewNavMenuItem activeNavItem navItem =
     let
         isActiveNav =
             activeNavItem == navItem
@@ -95,23 +95,36 @@ viewNavItem activeNavItem navItem =
         [ text <| navItemsToLabel navItem ]
 
 
+viewNavUserItem : String -> Html msg
+viewNavUserItem navItem =
+    li
+        [ classList
+            [ ( "text-white px-2 inline-flex items-center", True )
+            , ( "h-full cursor-pointer", True )
+            , ( "hover:text-alt-2", navItem /= "Sign In" )
+            , ( "bg-primary hover:text-white hover:bg-alt-3", navItem == "Sign In" )
+            ]
+        ]
+        [ text <| navItem ]
+
+
 viewNavMenu : NavItem -> Html Msg
 viewNavMenu activeNavItem =
     ul [ class "inline list-none mr-auto" ] <|
-        List.map (viewNavItem activeNavItem) navMenuItems
+        List.map (viewNavMenuItem activeNavItem) navMenuItems
 
 
-viewNavMenu2 : NavItem -> Html Msg
-viewNavMenu2 activeNavItem =
+viewNavMenuUser : Html msg
+viewNavMenuUser =
     ul [ class "inline list-none ml-auto" ] <|
-        List.map (viewNavItem activeNavItem) navMenuItems
+        List.map viewNavUserItem navUserItems
 
 
 viewNav : NavItem -> Html Msg
 viewNav activeNavItem =
     div [ class "flex flex-row mx-auto h-full w-10/12" ]
         [ viewNavMenu activeNavItem
-        , viewNavMenu2 activeNavItem
+        , viewNavMenuUser
         ]
 
 
@@ -133,3 +146,8 @@ view model =
 navMenuItems : List NavItem
 navMenuItems =
     [ Transport, Tickets, Hotels, Cars, More ]
+
+
+navUserItems : List String
+navUserItems =
+    [ "IDR / EN", "Sign In" ]

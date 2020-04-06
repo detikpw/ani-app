@@ -8,8 +8,10 @@ module.exports = {
     },
     extend: {
       colors: {
+        'primary': '#de007b',
         'alt-1': '#1f1e1e',
-        'alt-2': '#e357a5'
+        'alt-2': '#e357a5',
+        'alt-3': '#ab005f'
       }
     },
   },
