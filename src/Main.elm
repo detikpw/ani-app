@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Html exposing (..)
-import Html.Attributes exposing (class, classList)
+import Html.Attributes exposing (class, classList, src)
 import Html.Events exposing (onClick)
 
 
@@ -134,9 +134,22 @@ viewHeader model =
         [ viewNav model.activeNavItem ]
 
 
+viewMain : Html msg
+viewMain =
+    div [ class "flex flex-col items-center justify-center h-full" ]
+        [ div [ class "flex w-1/2 shadow-alt-1 bg-alt-4 rounded opacity-96 py-5 px-4" ]
+            [ input [ class "text-lg px-2 mr-2 flex-grow" ] []
+            , button [ class "bg-primary px-4 py-2 text-white uppercase" ] [ text "Search" ]
+            ]
+        ]
+
+
 view : Model -> Html Msg
 view model =
-    viewHeader model
+    div [ class "h-screen flex flex-col" ]
+        [ viewHeader model
+        , viewMain
+        ]
 
 
 
