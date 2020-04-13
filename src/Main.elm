@@ -87,8 +87,8 @@ viewNavMenuItem activeNavItem navItem =
     li
         [ classList
             [ ( "text-white px-2 inline-flex items-center", True )
-            , ( "h-full cursor-pointer hover:text-alt-2", True )
-            , ( "border-b-2 border-alt-2", isActiveNav )
+            , ( "relative h-full cursor-pointer hover:text-alt-2", True )
+            , ( "selected-nav-menu-item", isActiveNav )
             ]
         , onClick <| SetNavItem navItem
         ]

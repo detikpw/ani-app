@@ -6,4 +6,14 @@ body {
 
 @tailwind components;
 
+.selected-nav-menu-item:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  left: 8px;
+  right: 8px;
+  @apply bg-alt-2;
+}
+
 @tailwind utilities;
