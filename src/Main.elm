@@ -193,6 +193,3 @@ navMenuItems =
     [ Transport, Tickets, Hotels, Cars, More ]
 
 
-navUserItems : List String
-navUserItems =
-    [ "IDR / EN", "Sign In" ]
