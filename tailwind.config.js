@@ -8,11 +8,14 @@ module.exports = {
     },
     extend: {
       colors: {
-        'primary': '#de007b',
-        'alt-1': '#1f1e1e',
-        'alt-2': '#e357a5',
-        'alt-3': '#ab005f',
-        'alt-4': '#23282d'
+        'primary': '#657b83',
+        'secondary': '#93a1a1',
+        'alt-1': '#586e75',
+        'alt-2': '#b58900',
+        'alt-3': '#cb4b16',
+        'alt-4': '#dc322f',
+        'bg-1': '#fdf6e3',
+        'bg-2': '#eee8d5',
       },
       opacity: {
         '96': '.96'
