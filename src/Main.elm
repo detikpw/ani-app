@@ -33,6 +33,7 @@ type NavItem
 type alias Model =
     { activeNavItem : NavItem
     , input : String
+    , testDebounce : String
     }
 
 
@@ -40,6 +41,7 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { activeNavItem = Transport
       , input = ""
+      , testDebounce = ""
       }
     , Cmd.none
     )
@@ -47,8 +49,8 @@ init _ =
 
 type Msg
     = SetNavItem NavItem
-    | Input String
-    | SetInput String
+    | InputOccurred String
+    | TimePassed String
 
 
 
@@ -61,11 +63,17 @@ update msg model =
         SetNavItem activeNav ->
             ( { model | activeNavItem = activeNav }, Cmd.none )
 
-        Input str ->
-            ( model, Process.sleep 200 |> Task.perform (always (SetInput str)) )
+        InputOccurred str ->
+            ( { model | input = str }
+            , enqueueDebounceFor str
+            )
 
-        SetInput str ->
-            ( { model | input = str }, Cmd.none )
+        TimePassed debouncedString ->
+            if debouncedString == model.input then
+                ( { model | testDebounce = model.input }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
 
 
 
@@ -145,7 +153,7 @@ viewMain =
         [ div [ class "flex w-1/2 bg-bg-2 rounded py-5 px-4" ]
             [ input
                 [ class "text-lg px-2 mr-2 flex-grow bg-bg-1 text-primary"
-                , onInput Input
+                , onInput InputOccurred
                 ]
                 []
             , button [ class "bg-alt-4 px-4 py-2 text-white uppercase" ] [ text "Search" ]
@@ -162,7 +170,22 @@ view model =
 
 
 
+-- Helper
+
+
+enqueueDebounceFor : String -> Cmd Msg
+enqueueDebounceFor str =
+    Process.sleep debounceTimeOut
+        |> Task.perform (\_ -> TimePassed str)
+
+
+
 -- Const
+
+
+debounceTimeOut : Float
+debounceTimeOut =
+    200
 
 
 navMenuItems : List NavItem
