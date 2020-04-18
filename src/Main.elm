@@ -1,13 +1,13 @@
 module Main exposing (main)
 
 import Browser
-import GraphQl exposing (Named, Operation, Query, Variables)
+import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
 import Html.Attributes exposing (class, classList)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error)
-import Json.Decode as Decode exposing (Decoder, field, int, maybe, string)
+import Json.Decode as Decode exposing (Decoder, field, int, string)
 import Json.Encode as Encode
 import Process
 import Task
@@ -103,17 +103,13 @@ update msg model =
                 ( model, Cmd.none )
 
         GraphQlMsg arg ->
-            let
-                a =
-                    Debug.log "arg" arg
-            in
             case arg of
                 Ok value ->
                     ( { model | animeList = value.page.media }
                     , Cmd.none
                     )
 
-                Err e ->
+                Err _ ->
                     Debug.todo "Next gan"
 
 
