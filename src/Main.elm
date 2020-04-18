@@ -1,11 +1,17 @@
 module Main exposing (main)
 
 import Browser
+import Task
+import Process
 import Html exposing (..)
 import Html.Attributes exposing (class, classList)
 import Html.Events exposing (onClick, onInput)
-import Process
-import Task
+import Http exposing (Error)
+import Json.Encode as Encode
+import Json.Decode as Decode exposing (Decoder, field, maybe, int, string)
+import GraphQl exposing (Operation, Variables, Query, Named)
+import GraphQl.Http exposing (Options)
+
 
 
 main : Program () Model Msg
@@ -33,7 +39,23 @@ type NavItem
 type alias Model =
     { activeNavItem : NavItem
     , input : String
-    , testDebounce : String
+    }
+
+type alias QueryCollection =
+    { page: Page }
+
+type alias Page = 
+    { media: Maybe (List Media)
+    }
+
+type alias Media =
+    { id: Maybe Int
+    , title: Maybe Title
+    }
+
+type alias Title =
+    { romaji: Maybe String
+    , english: Maybe String
     }
 
 
@@ -41,7 +63,6 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { activeNavItem = Transport
       , input = ""
-      , testDebounce = ""
       }
     , Cmd.none
     )
@@ -51,6 +72,7 @@ type Msg
     = SetNavItem NavItem
     | InputOccurred String
     | TimePassed String
+    | GraphQlMsg (Result Error QueryCollection)
 
 
 
@@ -70,10 +92,16 @@ update msg model =
 
         TimePassed debouncedString ->
             if debouncedString == model.input then
-                ( { model | testDebounce = model.input }, Cmd.none )
+                ( model, sendRequest model.input )
 
             else
                 ( model, Cmd.none )
+
+        GraphQlMsg arg ->
+            let
+                a = Debug.log "arg" arg
+            in
+            (model, Cmd.none)
 
 
 
@@ -151,11 +179,26 @@ viewMain : Html Msg
 viewMain =
     div [ class "flex flex-col items-center justify-center h-full bg-bg-1" ]
         [ div [ class "flex w-1/2 bg-bg-2 rounded py-5 px-4" ]
-            [ input
-                [ class "text-lg px-2 mr-2 flex-grow bg-bg-1 text-primary"
-                , onInput InputOccurred
+            [ div
+                [class "mr-2 flex-grow relative"]
+                [ input
+                    [ class "text-lg bg-bg-1 text-primary w-full h-full px-2"
+                    , onInput InputOccurred
+                    ]
+                    []
+                , div
+                    [ class "absolute z-10 inset-x-0 top-1 px-2"
+                    , class "bg-bg-1 text-lg text-primary w-full h-full"
+                    ]
+                    [ div [class "h-8 flex items-center"]
+                        [ text "test"]
+                    , div [class "h-8 flex items-center"]
+                        [ text "test"]
+                    , div [class "h-8 flex items-center"]
+                        [ text "test"]
+                    ]
                 ]
-                []
+                 
             , button [ class "bg-alt-4 px-4 py-2 text-white uppercase" ] [ text "Search" ]
             ]
         ]
@@ -170,8 +213,70 @@ view model =
 
 
 
+-- Decoder
+
+decodeQueryCollection : Decoder QueryCollection
+decodeQueryCollection =
+    Decode.map QueryCollection
+        (field "Page" decodePage)
+        
+decodePage : Decoder Page
+decodePage =
+    Decode.map Page
+        (maybe (field "media" decodeListMedia ))
+decodeMedia : Decoder Media
+decodeMedia =
+    Decode.map2 Media
+        (maybe (field "id" int))
+        (maybe (field "title" decodeTitle))
+
+decodeTitle : Decoder Title
+decodeTitle =
+    Decode.map2 Title
+        (maybe (field "romaji" string))
+        (maybe (field "english" string))
+
+decodeListMedia : Decoder (List Media)
+decodeListMedia =
+    Decode.list decodeMedia
+
+
+
+
 -- Helper
 
+animeRequest : Operation Query Variables
+animeRequest =
+  GraphQl.named "AnimeQuery"
+    [ GraphQl.field "Page"
+      |> GraphQl.withArgument "page" (GraphQl.int 1)
+      |> GraphQl.withArgument "perPage" (GraphQl.int 7)
+      |> GraphQl.withSelectors
+        [ GraphQl.field "media"
+          |> GraphQl.withArgument "search" (GraphQl.variable "search")
+          |> GraphQl.withArgument "sort" (GraphQl.type_ "POPULARITY_DESC")
+          |> GraphQl.withArgument "type" (GraphQl.type_ "ANIME")
+          |> GraphQl.withSelectors
+            [ GraphQl.field "id" 
+            , GraphQl.field "title"
+            |> GraphQl.withSelectors
+                [ GraphQl.field "romaji" 
+                , GraphQl.field "english" 
+                ]
+            ]
+        ]
+    ]
+    |> GraphQl.withVariables [ ("search", "String") ]
+
+options : Options
+options =
+    {url = "https://graphql.anilist.co", headers = []}
+
+sendRequest : String -> Cmd Msg
+sendRequest search =
+  GraphQl.query animeRequest
+  |> GraphQl.addVariables [ ("search", Encode.string search) ]
+  |> GraphQl.Http.send options  GraphQlMsg decodeQueryCollection
 
 enqueueDebounceFor : String -> Cmd Msg
 enqueueDebounceFor str =

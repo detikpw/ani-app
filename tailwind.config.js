@@ -22,6 +22,9 @@ module.exports = {
       },
       boxShadow: {
         'alt-1': '2px 2px 20px rgba(0,0,0,.35)'
+      },
+      inset: {
+        '1': '100%'
       }
     },
   },
