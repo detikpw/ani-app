@@ -4,10 +4,10 @@ import Browser
 import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList)
+import Html.Attributes exposing (class, classList, value)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error)
-import Json.Decode as Decode exposing (Decoder, field, int, string)
+import Json.Decode as Decode exposing (Decoder, field, int, maybe, string)
 import Json.Encode as Encode
 import Process
 import Task
@@ -39,6 +39,7 @@ type alias Model =
     { activeNavItem : NavItem
     , input : String
     , animeList : List Media
+    , relatedAnime : List Media
     }
 
 
@@ -54,12 +55,20 @@ type alias Page =
 type alias Media =
     { id : Int
     , title : Title
+    , startDate : StartDate
     }
 
 
 type alias Title =
     { romaji : String
-    , english : String
+    , english : Maybe String
+    }
+
+
+type alias StartDate =
+    { year : Int
+    , month : Int
+    , day : Int
     }
 
 
@@ -68,6 +77,7 @@ init _ =
     ( { activeNavItem = Transport
       , input = ""
       , animeList = []
+      , relatedAnime = []
       }
     , Cmd.none
     )
@@ -77,7 +87,9 @@ type Msg
     = SetNavItem NavItem
     | InputOccurred String
     | TimePassed String
-    | GraphQlMsg (Result Error QueryCollection)
+    | QueryAnimeListBySearch (Result Error QueryCollection)
+    | QueryRelatedAnime (Result Error QueryCollection)
+    | SearchRelatedAnime Int String
 
 
 
@@ -97,20 +109,46 @@ update msg model =
 
         TimePassed debouncedString ->
             if debouncedString == model.input then
-                ( model, sendRequest model.input )
+                ( model, searchAnimeBySearch model.input )
 
             else
                 ( model, Cmd.none )
 
-        GraphQlMsg arg ->
+        QueryAnimeListBySearch arg ->
             case arg of
                 Ok value ->
                     ( { model | animeList = value.page.media }
                     , Cmd.none
                     )
 
-                Err _ ->
-                    Debug.todo "Next gan"
+                Err e ->
+                    let
+                        a =
+                            Debug.log "Query" e
+                    in
+                    Debug.todo "QueryAnimeListBySearch gan"
+
+        QueryRelatedAnime arg ->
+            case arg of
+                Ok value ->
+                    ( { model | relatedAnime = value.page.media }
+                    , Cmd.none
+                    )
+
+                Err e ->
+                    let
+                        a =
+                            Debug.log "Query" e
+                    in
+                    Debug.todo "QueryRelatedAnime gan"
+
+        SearchRelatedAnime id title ->
+            ( { model
+                | animeList = []
+                , input = title
+              }
+            , searchAnimeByIds [ id ]
+            )
 
 
 
@@ -180,17 +218,38 @@ viewNav activeNavItem =
 
 viewHeader : Model -> Html Msg
 viewHeader model =
-    header [ class "flex flex-row items-center bg-bg-2 h-12" ]
-        [ viewNav model.activeNavItem ]
+    header [ class "flex flex-row items-center bg-bg-2 h-12" ] []
 
 
-viewAutoCompleteItem : Media -> Html msg
+viewAutoCompleteItem : Media -> Html Msg
 viewAutoCompleteItem media =
-    div [ class "h-8 flex items-center" ]
-        [ text media.title.romaji ]
+    let
+        romajiTitle =
+            media.title.romaji
+
+        englishTitle =
+            case media.title.english of
+                Just str ->
+                    str
+
+                Nothing ->
+                    ""
+
+        title =
+            if romajiTitle == englishTitle then
+                romajiTitle
+
+            else
+                romajiTitle ++ " / " ++ englishTitle
+    in
+    div
+        [ class "flex items-center my-2 cursor-pointer"
+        , onClick (SearchRelatedAnime media.id title)
+        ]
+        [ text title ]
 
 
-viewAutoComplete : List Media -> Html msg
+viewAutoComplete : List Media -> Html Msg
 viewAutoComplete mediaList =
     case mediaList of
         [] ->
@@ -199,7 +258,7 @@ viewAutoComplete mediaList =
         _ ->
             div
                 [ class "absolute z-10 inset-x-0 top-1 px-2"
-                , class "bg-bg-1 text-lg text-primary w-full h-full"
+                , class "bg-bg-1 text-sm text-primary w-full h-full"
                 ]
                 (List.map viewAutoCompleteItem mediaList)
 
@@ -208,12 +267,13 @@ viewMain : Model -> Html Msg
 viewMain model =
     div [ class "flex flex-col items-center justify-center h-full bg-bg-1 px-4" ]
         [ div
-            [ class "mr-2 relative"
-            , class "flex w-11/12 bg-bg-2 rounded py-5 px-4"
-            ]
-            [ div [ class "relative w-full" ]
+            [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4" ]
+            [ span [ class "text-alt-2 items-center px-2 text-base" ]
+                [ text "Please type an anime title" ]
+            , div [ class "relative w-full" ]
                 [ input
                     [ class "text-lg bg-bg-1 text-primary w-full px-2 h-8"
+                    , value model.input
                     , onInput InputOccurred
                     ]
                     []
@@ -249,16 +309,25 @@ decodePage =
 
 decodeMedia : Decoder Media
 decodeMedia =
-    Decode.map2 Media
+    Decode.map3 Media
         (field "id" int)
         (field "title" decodeTitle)
+        (field "startDate" decodeStartDate)
 
 
 decodeTitle : Decoder Title
 decodeTitle =
     Decode.map2 Title
         (field "romaji" string)
-        (field "english" string)
+        (maybe (field "english" string))
+
+
+decodeStartDate : Decoder StartDate
+decodeStartDate =
+    Decode.map3 StartDate
+        (field "year" int)
+        (field "month" int)
+        (field "day" int)
 
 
 decodeListMedia : Decoder (List Media)
@@ -279,6 +348,7 @@ animeRequest =
             |> GraphQl.withSelectors
                 [ GraphQl.field "media"
                     |> GraphQl.withArgument "search" (GraphQl.variable "search")
+                    |> GraphQl.withArgument "id_in" (GraphQl.variable "ids")
                     |> GraphQl.withArgument "sort" (GraphQl.type_ "POPULARITY_DESC")
                     |> GraphQl.withArgument "type" (GraphQl.type_ "ANIME")
                     |> GraphQl.withSelectors
@@ -288,10 +358,16 @@ animeRequest =
                                 [ GraphQl.field "romaji"
                                 , GraphQl.field "english"
                                 ]
+                        , GraphQl.field "startDate"
+                            |> GraphQl.withSelectors
+                                [ GraphQl.field "year"
+                                , GraphQl.field "month"
+                                , GraphQl.field "day"
+                                ]
                         ]
                 ]
         ]
-        |> GraphQl.withVariables [ ( "search", "String" ) ]
+        |> GraphQl.withVariables [ ( "search", "String" ), ( "ids", "[Int]" ) ]
 
 
 options : Options
@@ -299,11 +375,18 @@ options =
     { url = "https://graphql.anilist.co", headers = [] }
 
 
-sendRequest : String -> Cmd Msg
-sendRequest search =
+searchAnimeBySearch : String -> Cmd Msg
+searchAnimeBySearch value =
     GraphQl.query animeRequest
-        |> GraphQl.addVariables [ ( "search", Encode.string search ) ]
-        |> GraphQl.Http.send options GraphQlMsg decodeQueryCollection
+        |> GraphQl.addVariables [ ( "search", Encode.string value ) ]
+        |> GraphQl.Http.send options QueryAnimeListBySearch decodeQueryCollection
+
+
+searchAnimeByIds : List Int -> Cmd Msg
+searchAnimeByIds values =
+    GraphQl.query animeRequest
+        |> GraphQl.addVariables [ ( "ids", Encode.list Encode.int values ) ]
+        |> GraphQl.Http.send options QueryRelatedAnime decodeQueryCollection
 
 
 enqueueDebounceFor : String -> Cmd Msg
