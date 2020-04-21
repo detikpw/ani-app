@@ -1,10 +1,11 @@
 module Main exposing (main)
 
 import Browser
+import Compare exposing (Comparator, by, concat)
 import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, value)
+import Html.Attributes exposing (class, classList, placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder, field, int, maybe, string)
@@ -75,9 +76,9 @@ type alias Title =
 
 
 type alias StartDate =
-    { year : Int
-    , month : Int
-    , day : Int
+    { year : Maybe Int
+    , month : Maybe Int
+    , day : Maybe Int
     }
 
 
@@ -115,6 +116,8 @@ type Msg
     | TimePassed String
     | QueryAnimeListBySearch (Result Error QueryCollection)
     | QueryRelatedAnime (Result Error QueryCollection)
+    | QueryPrequelAnime (Result Error QueryCollection)
+    | QuerySequelAnime (Result Error QueryCollection)
     | SearchRelatedAnime Int String
 
 
@@ -158,6 +161,69 @@ update msg model =
             case arg of
                 Ok value ->
                     let
+                        selectedMedia =
+                            List.head value.page.media
+
+                        edges =
+                            case selectedMedia of
+                                Just media ->
+                                    media.relations.edges
+
+                                Nothing ->
+                                    []
+
+                        prequel =
+                            List.filter (\edge -> .relationType edge == Prequel) edges
+
+                        sequel =
+                            List.filter (\edge -> .relationType edge == Sequel) edges
+
+                        currentMedia =
+                            List.map
+                                (\media ->
+                                    { id = media.id
+                                    , title = media.title
+                                    , startDate = media.startDate
+                                    }
+                                )
+                                value.page.media
+
+                        prequelMedia =
+                            List.map (\edge -> .node edge) prequel
+
+                        sequelMedia =
+                            List.map (\edge -> .node edge) sequel
+                    in
+                    ( { model
+                        | relatedAnime = prequelMedia ++ currentMedia ++ sequelMedia
+                      }
+                    , Cmd.batch
+                        [ case prequel of
+                            [ edge ] ->
+                                searchPrequelAnime [ edge.node.id ]
+
+                            _ ->
+                                Cmd.none
+                        , case sequel of
+                            [ edge ] ->
+                                searchSequelAnime [ edge.node.id ]
+
+                            _ ->
+                                Cmd.none
+                        ]
+                    )
+
+                Err e ->
+                    let
+                        a =
+                            Debug.log "Query" e
+                    in
+                    Debug.todo "QueryRelatedAnime gan"
+
+        QueryPrequelAnime arg ->
+            case arg of
+                Ok value ->
+                    let
                         relations =
                             case value.page.media of
                                 [] ->
@@ -167,7 +233,7 @@ update msg model =
                                     Just media
 
                                 mediaList ->
-                                    Debug.todo "QueryRelatedAnime nanti ya gan"
+                                    Debug.todo "QueryPrequelAnime nanti ya gan"
 
                         edges =
                             case relations of
@@ -176,17 +242,63 @@ update msg model =
 
                                 Nothing ->
                                     []
+
+                        prequel =
+                            List.filter (\edge -> .relationType edge == Prequel) edges
                     in
-                    ( { model | relationsEdge = edges }
-                    , Cmd.none
+                    ( { model
+                        | relatedAnime = List.map (\edge -> .node edge) prequel ++ model.relatedAnime
+                      }
+                    , case prequel of
+                        [ edge ] ->
+                            searchPrequelAnime [ edge.node.id ]
+
+                        _ ->
+                            Cmd.none
                     )
 
                 Err e ->
+                    Debug.todo "QueryPrequelAnime nanti ya gan"
+
+        QuerySequelAnime arg ->
+            case arg of
+                Ok value ->
                     let
-                        a =
-                            Debug.log "Query" e
+                        relations =
+                            case value.page.media of
+                                [] ->
+                                    Nothing
+
+                                [ media ] ->
+                                    Just media
+
+                                mediaList ->
+                                    Debug.todo "QuerySequelAnime nanti ya gan"
+
+                        edges =
+                            case relations of
+                                Just media ->
+                                    media.relations.edges
+
+                                Nothing ->
+                                    []
+
+                        sequel =
+                            List.filter (\edge -> .relationType edge == Sequel) edges
                     in
-                    Debug.todo "QueryRelatedAnime gan"
+                    ( { model
+                        | relatedAnime = model.relatedAnime ++ List.map (\edge -> .node edge) sequel
+                      }
+                    , case sequel of
+                        [ edge ] ->
+                            searchSequelAnime [ edge.node.id ]
+
+                        _ ->
+                            Cmd.none
+                    )
+
+                Err e ->
+                    Debug.todo "QuerySequelAnime nanti ya gan"
 
         SearchRelatedAnime id title ->
             ( { model
@@ -311,19 +423,21 @@ viewAutoComplete mediaList =
 
 viewMain : Model -> Html Msg
 viewMain model =
-    div [ class "flex flex-col items-center justify-center h-full bg-bg-1 px-4" ]
+    div [ class "flex flex-col items-center h-full bg-bg-1 px-4" ]
         [ div
-            [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4" ]
+            [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-8" ]
             [ span [ class "text-alt-2 items-center px-2 text-base" ]
                 [ text "Please type an anime title" ]
             , div [ class "relative w-full" ]
                 [ input
                     [ class "text-lg bg-bg-1 text-primary w-full px-2 h-8"
                     , value model.input
+                    , placeholder "e.g Code Geass"
                     , onInput InputOccurred
                     ]
                     []
                 , viewAutoComplete model.animeList
+                , div [] [ text <| Debug.toString (List.map (.title >> .romaji) (sortByReleaseDate model.relatedAnime)) ]
                 ]
             ]
         ]
@@ -380,9 +494,9 @@ decodeTitle =
 decodeStartDate : Decoder StartDate
 decodeStartDate =
     Decode.map3 StartDate
-        (field "year" int)
-        (field "month" int)
-        (field "day" int)
+        (maybe (field "year" int))
+        (maybe (field "month" int))
+        (maybe (field "day" int))
 
 
 decodeRelations : Decoder Relations
@@ -495,17 +609,61 @@ searchAnimeBySearch value =
         |> GraphQl.Http.send options QueryAnimeListBySearch decodeQueryCollection
 
 
-searchAnimeByIds : List Int -> Cmd Msg
-searchAnimeByIds values =
+prepareSearchAnimeByIds : List Int -> GraphQl.Request Query Variables
+prepareSearchAnimeByIds values =
     GraphQl.query animeRequest
         |> GraphQl.addVariables [ ( "ids", Encode.list Encode.int values ) ]
+
+
+searchAnimeByIds : List Int -> Cmd Msg
+searchAnimeByIds values =
+    prepareSearchAnimeByIds values
         |> GraphQl.Http.send options QueryRelatedAnime decodeQueryCollection
+
+
+searchPrequelAnime : List Int -> Cmd Msg
+searchPrequelAnime values =
+    prepareSearchAnimeByIds values
+        |> GraphQl.Http.send options QueryPrequelAnime decodeQueryCollection
+
+
+searchSequelAnime : List Int -> Cmd Msg
+searchSequelAnime values =
+    prepareSearchAnimeByIds values
+        |> GraphQl.Http.send options QuerySequelAnime decodeQueryCollection
 
 
 enqueueDebounceFor : String -> Cmd Msg
 enqueueDebounceFor str =
     Process.sleep debounceTimeOut
         |> Task.perform (\_ -> TimePassed str)
+
+
+sortByReleaseDate : List Media -> List Media
+sortByReleaseDate media =
+    List.sortWith
+        (concat
+            [ by
+                (\a ->
+                    case a.startDate.year of
+                        Just value ->
+                            value
+
+                        Nothing ->
+                            0
+                )
+            , by
+                (\a ->
+                    case a.startDate.month of
+                        Just value ->
+                            value
+
+                        Nothing ->
+                            0
+                )
+            ]
+        )
+        media
 
 
 
