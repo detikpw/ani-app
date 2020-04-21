@@ -38,8 +38,9 @@ type NavItem
 type alias Model =
     { activeNavItem : NavItem
     , input : String
-    , animeList : List Media
+    , animeList : List MediaWithRelations
     , relatedAnime : List Media
+    , relationsEdge : List Edge
     }
 
 
@@ -48,7 +49,7 @@ type alias QueryCollection =
 
 
 type alias Page =
-    { media : List Media
+    { media : List MediaWithRelations
     }
 
 
@@ -56,6 +57,14 @@ type alias Media =
     { id : Int
     , title : Title
     , startDate : StartDate
+    }
+
+
+type alias MediaWithRelations =
+    { id : Int
+    , title : Title
+    , startDate : StartDate
+    , relations : Relations
     }
 
 
@@ -72,12 +81,29 @@ type alias StartDate =
     }
 
 
+type alias Relations =
+    { edges : List Edge }
+
+
+type alias Edge =
+    { relationType : RelationType
+    , node : Media
+    }
+
+
+type RelationType
+    = Prequel
+    | Sequel
+    | Other
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { activeNavItem = Transport
       , input = ""
       , animeList = []
       , relatedAnime = []
+      , relationsEdge = []
       }
     , Cmd.none
     )
@@ -131,7 +157,27 @@ update msg model =
         QueryRelatedAnime arg ->
             case arg of
                 Ok value ->
-                    ( { model | relatedAnime = value.page.media }
+                    let
+                        relations =
+                            case value.page.media of
+                                [] ->
+                                    Nothing
+
+                                [ media ] ->
+                                    Just media
+
+                                mediaList ->
+                                    Debug.todo "QueryRelatedAnime nanti ya gan"
+
+                        edges =
+                            case relations of
+                                Just media ->
+                                    media.relations.edges
+
+                                Nothing ->
+                                    []
+                    in
+                    ( { model | relationsEdge = edges }
                     , Cmd.none
                     )
 
@@ -221,7 +267,7 @@ viewHeader model =
     header [ class "flex flex-row items-center bg-bg-2 h-12" ] []
 
 
-viewAutoCompleteItem : Media -> Html Msg
+viewAutoCompleteItem : MediaWithRelations -> Html Msg
 viewAutoCompleteItem media =
     let
         romajiTitle =
@@ -249,7 +295,7 @@ viewAutoCompleteItem media =
         [ text title ]
 
 
-viewAutoComplete : List Media -> Html Msg
+viewAutoComplete : List MediaWithRelations -> Html Msg
 viewAutoComplete mediaList =
     case mediaList of
         [] ->
@@ -304,7 +350,16 @@ decodeQueryCollection =
 decodePage : Decoder Page
 decodePage =
     Decode.map Page
-        (field "media" decodeListMedia)
+        (field "media" decodeListMediaWithRelations)
+
+
+decodeMediaWithRelations : Decoder MediaWithRelations
+decodeMediaWithRelations =
+    Decode.map4 MediaWithRelations
+        (field "id" int)
+        (field "title" decodeTitle)
+        (field "startDate" decodeStartDate)
+        (field "relations" decodeRelations)
 
 
 decodeMedia : Decoder Media
@@ -330,6 +385,47 @@ decodeStartDate =
         (field "day" int)
 
 
+decodeRelations : Decoder Relations
+decodeRelations =
+    Decode.map Relations
+        (field "edges" decodeListEdge)
+
+
+decodeEdge : Decoder Edge
+decodeEdge =
+    Decode.map2 Edge
+        (field "relationType" decodeRelationType)
+        (field "node" decodeMedia)
+
+
+decodeRelationType : Decoder RelationType
+decodeRelationType =
+    Decode.map stringToRelationType string
+
+
+stringToRelationType : String -> RelationType
+stringToRelationType value =
+    case value of
+        "PREQUEL" ->
+            Prequel
+
+        "SEQUEL" ->
+            Sequel
+
+        _ ->
+            Other
+
+
+decodeListEdge : Decoder (List Edge)
+decodeListEdge =
+    Decode.list decodeEdge
+
+
+decodeListMediaWithRelations : Decoder (List MediaWithRelations)
+decodeListMediaWithRelations =
+    Decode.list decodeMediaWithRelations
+
+
 decodeListMedia : Decoder (List Media)
 decodeListMedia =
     Decode.list decodeMedia
@@ -352,22 +448,39 @@ animeRequest =
                     |> GraphQl.withArgument "sort" (GraphQl.type_ "POPULARITY_DESC")
                     |> GraphQl.withArgument "type" (GraphQl.type_ "ANIME")
                     |> GraphQl.withSelectors
-                        [ GraphQl.field "id"
-                        , GraphQl.field "title"
-                            |> GraphQl.withSelectors
-                                [ GraphQl.field "romaji"
-                                , GraphQl.field "english"
-                                ]
-                        , GraphQl.field "startDate"
-                            |> GraphQl.withSelectors
-                                [ GraphQl.field "year"
-                                , GraphQl.field "month"
-                                , GraphQl.field "day"
-                                ]
-                        ]
+                        (queryMedia
+                            ++ [ GraphQl.field "relations"
+                                    |> GraphQl.withSelectors
+                                        [ GraphQl.field "edges"
+                                            |> GraphQl.withSelectors
+                                                [ GraphQl.field "relationType"
+                                                , GraphQl.field "node"
+                                                    |> GraphQl.withSelectors
+                                                        queryMedia
+                                                ]
+                                        ]
+                               ]
+                        )
                 ]
         ]
         |> GraphQl.withVariables [ ( "search", "String" ), ( "ids", "[Int]" ) ]
+
+
+queryMedia : List (GraphQl.Field a)
+queryMedia =
+    [ GraphQl.field "id"
+    , GraphQl.field "title"
+        |> GraphQl.withSelectors
+            [ GraphQl.field "romaji"
+            , GraphQl.field "english"
+            ]
+    , GraphQl.field "startDate"
+        |> GraphQl.withSelectors
+            [ GraphQl.field "year"
+            , GraphQl.field "month"
+            , GraphQl.field "day"
+            ]
+    ]
 
 
 options : Options
