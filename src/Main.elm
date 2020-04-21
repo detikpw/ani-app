@@ -38,6 +38,7 @@ type NavItem
 
 type alias Model =
     { activeNavItem : NavItem
+    , selectedTab : Tab
     , input : String
     , animeList : List MediaWithRelations
     , relatedAnime : List Media
@@ -101,6 +102,7 @@ type RelationType
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { activeNavItem = Transport
+      , selectedTab = ByReleaseDate
       , input = ""
       , animeList = []
       , relatedAnime = []
@@ -112,6 +114,7 @@ init _ =
 
 type Msg
     = SetNavItem NavItem
+    | SelectTab Tab
     | InputOccurred String
     | TimePassed String
     | QueryAnimeListBySearch (Result Error QueryCollection)
@@ -130,6 +133,9 @@ update msg model =
     case msg of
         SetNavItem activeNav ->
             ( { model | activeNavItem = activeNav }, Cmd.none )
+
+        SelectTab tab ->
+            ( { model | selectedTab = tab }, Cmd.none )
 
         InputOccurred str ->
             ( { model | input = str }
@@ -345,6 +351,14 @@ navItemsToLabel navItem =
 -- View
 
 
+view : Model -> Html Msg
+view model =
+    div [ class "h-screen flex flex-col" ]
+        [ viewHeader model
+        , viewMain model
+        ]
+
+
 viewNavMenuItem : NavItem -> NavItem -> Html Msg
 viewNavMenuItem activeNavItem navItem =
     let
@@ -437,17 +451,30 @@ viewMain model =
                     ]
                     []
                 , viewAutoComplete model.animeList
-                , div [] [ text <| Debug.toString (List.map (.title >> .romaji) (sortByReleaseDate model.relatedAnime)) ]
                 ]
             ]
+        , viewTabs model.selectedTab
         ]
 
 
-view : Model -> Html Msg
-view model =
-    div [ class "h-screen flex flex-col" ]
-        [ viewHeader model
-        , viewMain model
+viewTab : Tab -> Tab -> Html Msg
+viewTab selectedTab tab =
+    li
+        [ classList
+            [ ( "text-primary px-2 inline-flex items-center w-1/2", True )
+            , ( "relative h-full cursor-pointer hover:text-alt-2", True )
+            , ( "selected-nav-menu-item", selectedTab == tab )
+            ]
+        , onClick (SelectTab tab)
+        ]
+        [ span [ class "mx-auto" ] [ text (tabToLabel tab) ] ]
+
+
+viewTabs : Tab -> Html Msg
+viewTabs selectedTab =
+    div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
+        [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
+            List.map (viewTab selectedTab) tabs
         ]
 
 
@@ -666,8 +693,23 @@ sortByReleaseDate media =
         media
 
 
+tabToLabel : Tab -> String
+tabToLabel tab =
+    case tab of
+        ByReleaseDate ->
+            "By Release Date"
+
+        ByStoryTimeline ->
+            "By Story Timeline"
+
+
 
 -- Const
+
+
+type Tab
+    = ByReleaseDate
+    | ByStoryTimeline
 
 
 debounceTimeOut : Float
@@ -678,3 +720,8 @@ debounceTimeOut =
 navMenuItems : List NavItem
 navMenuItems =
     [ Transport, Tickets, Hotels, Cars, More ]
+
+
+tabs : List Tab
+tabs =
+    [ ByReleaseDate, ByStoryTimeline ]
