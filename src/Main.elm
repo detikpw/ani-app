@@ -138,7 +138,7 @@ update msg model =
                 ( model, searchAnimeBySearch model.input )
 
             else
-                ( model, Cmd.none )
+                ( model, enqueueDebounceFor model.input )
 
         QueryAnimeListBySearch arg ->
             let
@@ -398,16 +398,11 @@ viewHeader model =
 viewAutoCompleteItem : Media -> Html Msg
 viewAutoCompleteItem value =
     let
-        media =
-            case value of
-                Extended v _ ->
-                    v
-
-                Standard v ->
-                    v
+        basicInfo =
+            mediaToBasicInfo value
 
         title =
-            ( media.title.romaji, media.title.english )
+            ( basicInfo.title.romaji, basicInfo.title.english )
 
         label =
             case title of
@@ -423,7 +418,7 @@ viewAutoCompleteItem value =
     in
     div
         [ class "flex items-center my-2 cursor-pointer"
-        , onClick (SearchRelatedAnime media.id label)
+        , onClick (SearchRelatedAnime basicInfo.id label)
         ]
         [ text label ]
 
@@ -515,7 +510,7 @@ viewTab selectedTab tab =
             ]
         , onClick (SelectTab tab)
         ]
-        [ span [ class "mx-auto text-sm" ] [ text (tabToLabel tab) ] ]
+        [ span [ class "mx-auto text-sm cursor-pointer" ] [ text (tabToLabel tab) ] ]
 
 
 
