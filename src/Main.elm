@@ -55,6 +55,7 @@ type alias BasicInfo =
     { id : Int
     , title : Title
     , startDate : StartDate
+    , coverImage : String
     }
 
 
@@ -98,7 +99,7 @@ init _ =
 
 initBasicInfo : BasicInfo
 initBasicInfo =
-    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing)
+    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing) ""
 
 
 type Msg
@@ -180,11 +181,7 @@ update msg model =
                                         Just
                                             ( List.filter (\edge -> .relationType edge == Prequel) items
                                                 |> List.map .node
-                                            , [ { id = node.id
-                                                , title = node.title
-                                                , startDate = node.startDate
-                                                }
-                                              ]
+                                            , [ node ]
                                             , List.filter (\edge -> .relationType edge == Sequel) items
                                                 |> List.map .node
                                             )
@@ -505,10 +502,16 @@ extendedMediaDecoder =
 
 basicMediaDecoder : Decoder BasicInfo
 basicMediaDecoder =
-    Decode.map3 BasicInfo
+    Decode.map4 BasicInfo
         (field "id" int)
         (field "title" titleDecoder)
         (field "startDate" startDateDecoder)
+        (field "coverImage" coverImageDecoder)
+
+
+coverImageDecoder : Decoder String
+coverImageDecoder =
+    field "large" string
 
 
 titleDecoder : Decoder Title
@@ -605,6 +608,9 @@ queryMedia =
             , GraphQl.field "month"
             , GraphQl.field "day"
             ]
+    , GraphQl.field "coverImage"
+        |> GraphQl.withSelectors
+            [ GraphQl.field "large" ]
     ]
 
 
