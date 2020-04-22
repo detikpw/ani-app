@@ -160,44 +160,36 @@ update msg model =
             case arg of
                 Ok value ->
                     let
-                        selectedMedia =
-                            List.head value
-
-                        nodeAndEdges =
-                            case selectedMedia of
-                                Just media ->
-                                    case media of
-                                        Standard v ->
-                                            ( v, Just [] )
-
-                                        Extended v z ->
-                                            ( v, z )
-
-                                Nothing ->
-                                    ( BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing), Nothing )
-
                         ( node, edges ) =
-                            nodeAndEdges
+                            List.head value
+                                |> Maybe.andThen
+                                    (\media ->
+                                        case media of
+                                            Standard v ->
+                                                Just ( v, Just [] )
+
+                                            Extended v z ->
+                                                Just ( v, z )
+                                    )
+                                |> Maybe.withDefault ( initBasicInfo, Nothing )
 
                         relations =
-                            case edges of
-                                Just [] ->
-                                    ( [], [], [] )
-
-                                Just items ->
-                                    ( List.filter (\edge -> .relationType edge == Prequel) items
-                                        |> List.map .node
-                                    , [ { id = node.id
-                                        , title = node.title
-                                        , startDate = node.startDate
-                                        }
-                                      ]
-                                    , List.filter (\edge -> .relationType edge == Sequel) items
-                                        |> List.map .node
+                            edges
+                                |> Maybe.andThen
+                                    (\items ->
+                                        Just
+                                            ( List.filter (\edge -> .relationType edge == Prequel) items
+                                                |> List.map .node
+                                            , [ { id = node.id
+                                                , title = node.title
+                                                , startDate = node.startDate
+                                                }
+                                              ]
+                                            , List.filter (\edge -> .relationType edge == Sequel) items
+                                                |> List.map .node
+                                            )
                                     )
-
-                                Nothing ->
-                                    ( [], [], [] )
+                                |> Maybe.withDefault ( [], [], [] )
 
                         ( prequel, current, sequel ) =
                             relations
@@ -213,8 +205,8 @@ update msg model =
                             _ ->
                                 Cmd.none
                         , case sequel of
-                            [ e ] ->
-                                searchSequelAnime [ e.id ]
+                            [ s ] ->
+                                searchSequelAnime [ s.id ]
 
                             _ ->
                                 Cmd.none
@@ -658,16 +650,16 @@ sortByReleaseDate mediaList =
     List.sortWith
         (concat
             [ by
-                (\a ->
-                    a
+                (\media ->
+                    media
                         |> mediaToBasicInfo
                         |> .startDate
                         |> .year
                         |> Maybe.withDefault 0
                 )
             , by
-                (\a ->
-                    a
+                (\media ->
+                    media
                         |> mediaToBasicInfo
                         |> .startDate
                         |> .month
