@@ -1,14 +1,14 @@
 module Main exposing (main)
 
 import Browser
-import Compare exposing (Comparator, by, concat)
+import Compare exposing (by, concat)
 import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
 import Html.Attributes exposing (class, classList, placeholder, value)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error)
-import Json.Decode as Decode exposing (Decoder, field, int, maybe, string)
+import Json.Decode as Decode exposing (Decoder, at, field, int, maybe, string)
 import Json.Encode as Encode
 import Process
 import Task
@@ -40,33 +40,21 @@ type alias Model =
     { activeNavItem : NavItem
     , selectedTab : Tab
     , input : String
-    , animeList : List MediaWithRelations
-    , relatedAnime : List Media
+    , animeList : List Media
+    , relatedAnime : List BasicInfo
     , relationsEdge : List Edge
     }
 
 
-type alias QueryCollection =
-    { page : Page }
+type Media
+    = Standard BasicInfo
+    | Extended BasicInfo (Maybe (List Edge))
 
 
-type alias Page =
-    { media : List MediaWithRelations
-    }
-
-
-type alias Media =
+type alias BasicInfo =
     { id : Int
     , title : Title
     , startDate : StartDate
-    }
-
-
-type alias MediaWithRelations =
-    { id : Int
-    , title : Title
-    , startDate : StartDate
-    , relations : Relations
     }
 
 
@@ -83,13 +71,9 @@ type alias StartDate =
     }
 
 
-type alias Relations =
-    { edges : List Edge }
-
-
 type alias Edge =
     { relationType : RelationType
-    , node : Media
+    , node : BasicInfo
     }
 
 
@@ -112,15 +96,20 @@ init _ =
     )
 
 
+initBasicInfo : BasicInfo
+initBasicInfo =
+    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing)
+
+
 type Msg
     = SetNavItem NavItem
     | SelectTab Tab
     | InputOccurred String
     | TimePassed String
-    | QueryAnimeListBySearch (Result Error QueryCollection)
-    | QueryRelatedAnime (Result Error QueryCollection)
-    | QueryPrequelAnime (Result Error QueryCollection)
-    | QuerySequelAnime (Result Error QueryCollection)
+    | QueryAnimeListBySearch (Result Error (List Media))
+    | QueryRelatedAnime (Result Error (List Media))
+    | QueryPrequelAnime (Result Error (List Media))
+    | QuerySequelAnime (Result Error (List Media))
     | SearchRelatedAnime Int String
 
 
@@ -150,9 +139,13 @@ update msg model =
                 ( model, Cmd.none )
 
         QueryAnimeListBySearch arg ->
+            let
+                z =
+                    Debug.log "test" arg
+            in
             case arg of
                 Ok value ->
-                    ( { model | animeList = value.page.media }
+                    ( { model | animeList = value }
                     , Cmd.none
                     )
 
@@ -168,51 +161,60 @@ update msg model =
                 Ok value ->
                     let
                         selectedMedia =
-                            List.head value.page.media
+                            List.head value
 
-                        edges =
+                        nodeAndEdges =
                             case selectedMedia of
                                 Just media ->
-                                    media.relations.edges
+                                    case media of
+                                        Standard v ->
+                                            ( v, Just [] )
+
+                                        Extended v z ->
+                                            ( v, z )
 
                                 Nothing ->
-                                    []
+                                    ( BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing), Nothing )
 
-                        prequel =
-                            List.filter (\edge -> .relationType edge == Prequel) edges
+                        ( node, edges ) =
+                            nodeAndEdges
 
-                        sequel =
-                            List.filter (\edge -> .relationType edge == Sequel) edges
+                        relations =
+                            case edges of
+                                Just [] ->
+                                    ( [], [], [] )
 
-                        currentMedia =
-                            List.map
-                                (\media ->
-                                    { id = media.id
-                                    , title = media.title
-                                    , startDate = media.startDate
-                                    }
-                                )
-                                value.page.media
+                                Just items ->
+                                    ( List.filter (\edge -> .relationType edge == Prequel) items
+                                        |> List.map .node
+                                    , [ { id = node.id
+                                        , title = node.title
+                                        , startDate = node.startDate
+                                        }
+                                      ]
+                                    , List.filter (\edge -> .relationType edge == Sequel) items
+                                        |> List.map .node
+                                    )
 
-                        prequelMedia =
-                            List.map (\edge -> .node edge) prequel
+                                Nothing ->
+                                    ( [], [], [] )
 
-                        sequelMedia =
-                            List.map (\edge -> .node edge) sequel
+                        ( prequel, current, sequel ) =
+                            relations
                     in
                     ( { model
-                        | relatedAnime = prequelMedia ++ currentMedia ++ sequelMedia
+                        | relatedAnime = prequel ++ current ++ sequel
                       }
                     , Cmd.batch
                         [ case prequel of
-                            [ edge ] ->
-                                searchPrequelAnime [ edge.node.id ]
+                            [ p ] ->
+                                searchPrequelAnime [ p.id ]
 
                             _ ->
                                 Cmd.none
                         , case sequel of
-                            [ edge ] ->
-                                searchSequelAnime [ edge.node.id ]
+                            [ e ] ->
+                                searchSequelAnime [ e.id ]
 
                             _ ->
                                 Cmd.none
@@ -230,34 +232,27 @@ update msg model =
             case arg of
                 Ok value ->
                     let
-                        relations =
-                            case value.page.media of
-                                [] ->
-                                    Nothing
-
-                                [ media ] ->
-                                    Just media
-
-                                mediaList ->
-                                    Debug.todo "QueryPrequelAnime nanti ya gan"
-
-                        edges =
-                            case relations of
-                                Just media ->
-                                    media.relations.edges
-
-                                Nothing ->
-                                    []
-
                         prequel =
-                            List.filter (\edge -> .relationType edge == Prequel) edges
+                            List.head value
+                                |> Maybe.andThen
+                                    (\sm ->
+                                        case sm of
+                                            Standard _ ->
+                                                Just []
+
+                                            Extended _ z ->
+                                                z
+                                    )
+                                |> Maybe.withDefault []
+                                |> List.filter (\edge -> .relationType edge == Prequel)
+                                |> List.map .node
                     in
                     ( { model
-                        | relatedAnime = List.map (\edge -> .node edge) prequel ++ model.relatedAnime
+                        | relatedAnime = prequel ++ model.relatedAnime
                       }
                     , case prequel of
-                        [ edge ] ->
-                            searchPrequelAnime [ edge.node.id ]
+                        [ p ] ->
+                            searchPrequelAnime [ p.id ]
 
                         _ ->
                             Cmd.none
@@ -270,34 +265,27 @@ update msg model =
             case arg of
                 Ok value ->
                     let
-                        relations =
-                            case value.page.media of
-                                [] ->
-                                    Nothing
-
-                                [ media ] ->
-                                    Just media
-
-                                mediaList ->
-                                    Debug.todo "QuerySequelAnime nanti ya gan"
-
-                        edges =
-                            case relations of
-                                Just media ->
-                                    media.relations.edges
-
-                                Nothing ->
-                                    []
-
                         sequel =
-                            List.filter (\edge -> .relationType edge == Sequel) edges
+                            List.head value
+                                |> Maybe.andThen
+                                    (\sm ->
+                                        case sm of
+                                            Standard _ ->
+                                                Just []
+
+                                            Extended _ z ->
+                                                z
+                                    )
+                                |> Maybe.withDefault []
+                                |> List.filter (\edge -> .relationType edge == Sequel)
+                                |> List.map .node
                     in
                     ( { model
-                        | relatedAnime = model.relatedAnime ++ List.map (\edge -> .node edge) sequel
+                        | relatedAnime = model.relatedAnime ++ sequel
                       }
                     , case sequel of
-                        [ edge ] ->
-                            searchSequelAnime [ edge.node.id ]
+                        [ s ] ->
+                            searchSequelAnime [ s.id ]
 
                         _ ->
                             Cmd.none
@@ -393,35 +381,40 @@ viewHeader model =
     header [ class "flex flex-row items-center bg-bg-2 h-12" ] []
 
 
-viewAutoCompleteItem : MediaWithRelations -> Html Msg
-viewAutoCompleteItem media =
+viewAutoCompleteItem : Media -> Html Msg
+viewAutoCompleteItem value =
     let
-        romajiTitle =
-            media.title.romaji
+        media =
+            case value of
+                Extended v _ ->
+                    v
 
-        englishTitle =
-            case media.title.english of
-                Just str ->
-                    str
-
-                Nothing ->
-                    ""
+                Standard v ->
+                    v
 
         title =
-            if romajiTitle == englishTitle then
-                romajiTitle
+            ( media.title.romaji, media.title.english )
 
-            else
-                romajiTitle ++ " / " ++ englishTitle
+        label =
+            case title of
+                ( romaji, Just english ) ->
+                    if romaji == english then
+                        romaji
+
+                    else
+                        romaji ++ " / " ++ english
+
+                ( romaji, Nothing ) ->
+                    romaji
     in
     div
         [ class "flex items-center my-2 cursor-pointer"
-        , onClick (SearchRelatedAnime media.id title)
+        , onClick (SearchRelatedAnime media.id label)
         ]
-        [ text title ]
+        [ text label ]
 
 
-viewAutoComplete : List MediaWithRelations -> Html Msg
+viewAutoComplete : List Media -> Html Msg
 viewAutoComplete mediaList =
     case mediaList of
         [] ->
@@ -482,66 +475,79 @@ viewTabs selectedTab =
 -- Decoder
 
 
-decodeQueryCollection : Decoder QueryCollection
-decodeQueryCollection =
-    Decode.map QueryCollection
-        (field "Page" decodePage)
+mediaListDecoder : Decoder (List Media)
+mediaListDecoder =
+    at [ "Page", "media" ] (Decode.list mediaDecoder)
 
 
-decodePage : Decoder Page
-decodePage =
-    Decode.map Page
-        (field "media" decodeListMediaWithRelations)
+mediaDecoder : Decoder Media
+mediaDecoder =
+    relationsDecoder
+        |> Decode.andThen chooseFromRelations
 
 
-decodeMediaWithRelations : Decoder MediaWithRelations
-decodeMediaWithRelations =
-    Decode.map4 MediaWithRelations
+chooseFromRelations : Maybe (List Edge) -> Decoder Media
+chooseFromRelations relations =
+    case relations of
+        Just _ ->
+            extendedMediaDecoder
+
+        Nothing ->
+            standardMediaDecoder
+
+
+standardMediaDecoder : Decoder Media
+standardMediaDecoder =
+    Decode.map Standard basicMediaDecoder
+
+
+extendedMediaDecoder : Decoder Media
+extendedMediaDecoder =
+    Decode.map2 Extended basicMediaDecoder relationsDecoder
+
+
+basicMediaDecoder : Decoder BasicInfo
+basicMediaDecoder =
+    Decode.map3 BasicInfo
         (field "id" int)
-        (field "title" decodeTitle)
-        (field "startDate" decodeStartDate)
-        (field "relations" decodeRelations)
+        (field "title" titleDecoder)
+        (field "startDate" startDateDecoder)
 
 
-decodeMedia : Decoder Media
-decodeMedia =
-    Decode.map3 Media
-        (field "id" int)
-        (field "title" decodeTitle)
-        (field "startDate" decodeStartDate)
-
-
-decodeTitle : Decoder Title
-decodeTitle =
+titleDecoder : Decoder Title
+titleDecoder =
     Decode.map2 Title
         (field "romaji" string)
         (maybe (field "english" string))
 
 
-decodeStartDate : Decoder StartDate
-decodeStartDate =
+startDateDecoder : Decoder StartDate
+startDateDecoder =
     Decode.map3 StartDate
         (maybe (field "year" int))
         (maybe (field "month" int))
         (maybe (field "day" int))
 
 
-decodeRelations : Decoder Relations
-decodeRelations =
-    Decode.map Relations
-        (field "edges" decodeListEdge)
+relationsDecoder : Decoder (Maybe (List Edge))
+relationsDecoder =
+    maybe (at [ "relations", "edges" ] (Decode.list edgeDecoder))
 
 
-decodeEdge : Decoder Edge
-decodeEdge =
+edgeDecoder : Decoder Edge
+edgeDecoder =
     Decode.map2 Edge
-        (field "relationType" decodeRelationType)
-        (field "node" decodeMedia)
+        (field "relationType" relationTypeDecoder)
+        (field "node" basicMediaDecoder)
 
 
-decodeRelationType : Decoder RelationType
-decodeRelationType =
+relationTypeDecoder : Decoder RelationType
+relationTypeDecoder =
     Decode.map stringToRelationType string
+
+
+
+-- Helper
 
 
 stringToRelationType : String -> RelationType
@@ -555,25 +561,6 @@ stringToRelationType value =
 
         _ ->
             Other
-
-
-decodeListEdge : Decoder (List Edge)
-decodeListEdge =
-    Decode.list decodeEdge
-
-
-decodeListMediaWithRelations : Decoder (List MediaWithRelations)
-decodeListMediaWithRelations =
-    Decode.list decodeMediaWithRelations
-
-
-decodeListMedia : Decoder (List Media)
-decodeListMedia =
-    Decode.list decodeMedia
-
-
-
--- Helper
 
 
 animeRequest : Operation Query Variables
@@ -633,7 +620,7 @@ searchAnimeBySearch : String -> Cmd Msg
 searchAnimeBySearch value =
     GraphQl.query animeRequest
         |> GraphQl.addVariables [ ( "search", Encode.string value ) ]
-        |> GraphQl.Http.send options QueryAnimeListBySearch decodeQueryCollection
+        |> GraphQl.Http.send options QueryAnimeListBySearch mediaListDecoder
 
 
 prepareSearchAnimeByIds : List Int -> GraphQl.Request Query Variables
@@ -645,19 +632,19 @@ prepareSearchAnimeByIds values =
 searchAnimeByIds : List Int -> Cmd Msg
 searchAnimeByIds values =
     prepareSearchAnimeByIds values
-        |> GraphQl.Http.send options QueryRelatedAnime decodeQueryCollection
+        |> GraphQl.Http.send options QueryRelatedAnime mediaListDecoder
 
 
 searchPrequelAnime : List Int -> Cmd Msg
 searchPrequelAnime values =
     prepareSearchAnimeByIds values
-        |> GraphQl.Http.send options QueryPrequelAnime decodeQueryCollection
+        |> GraphQl.Http.send options QueryPrequelAnime mediaListDecoder
 
 
 searchSequelAnime : List Int -> Cmd Msg
 searchSequelAnime values =
     prepareSearchAnimeByIds values
-        |> GraphQl.Http.send options QuerySequelAnime decodeQueryCollection
+        |> GraphQl.Http.send options QuerySequelAnime mediaListDecoder
 
 
 enqueueDebounceFor : String -> Cmd Msg
@@ -667,30 +654,38 @@ enqueueDebounceFor str =
 
 
 sortByReleaseDate : List Media -> List Media
-sortByReleaseDate media =
+sortByReleaseDate mediaList =
     List.sortWith
         (concat
             [ by
                 (\a ->
-                    case a.startDate.year of
-                        Just value ->
-                            value
-
-                        Nothing ->
-                            0
+                    a
+                        |> mediaToBasicInfo
+                        |> .startDate
+                        |> .year
+                        |> Maybe.withDefault 0
                 )
             , by
                 (\a ->
-                    case a.startDate.month of
-                        Just value ->
-                            value
-
-                        Nothing ->
-                            0
+                    a
+                        |> mediaToBasicInfo
+                        |> .startDate
+                        |> .month
+                        |> Maybe.withDefault 0
                 )
             ]
         )
-        media
+        mediaList
+
+
+mediaToBasicInfo : Media -> BasicInfo
+mediaToBasicInfo media =
+    case media of
+        Standard v ->
+            v
+
+        Extended v _ ->
+            v
 
 
 tabToLabel : Tab -> String
