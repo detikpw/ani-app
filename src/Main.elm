@@ -5,13 +5,14 @@ import Compare exposing (by, concat)
 import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, placeholder, value)
+import Html.Attributes exposing (class, classList, placeholder, value, src)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder, at, field, int, maybe, string)
 import Json.Encode as Encode
 import Process
 import Task
+import Array exposing (Array)
 
 
 main : Program () Model Msg
@@ -440,18 +441,31 @@ viewMain model =
 
 
 viewTabs : Model -> Html Msg
-viewTabs model =
-    case model.relatedAnime of
-        [] ->
-            Html.text ""
-
-        _ ->
+viewTabs { relatedAnime, animeList, selectedTab } =
+    case (relatedAnime, animeList) of
+        -- ([], []) ->
+        --     Html.text ""
+        (ra, []) ->
             div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
                 [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
-                    List.map (viewTab model.selectedTab) tabs
+                    List.map (viewTab selectedTab) tabs
+                , div [ class "flex flex-col w-full"]
+                    (List.map viewCard relatedAnime)
                 ]
+                
+        _ ->
+            Html.text ""
 
-
+viewCard : BasicInfo -> Html msg
+viewCard basicInfo =
+    div [ class "flex w-full mt-4"]
+        [ img 
+            [ src basicInfo.coverImage
+            , class "w-1/2 mr-2"
+            ] []
+        , div [class "flex flex-col w-1/2 text-primary text-sm"]
+            [text ("title: " ++ basicInfo.title.romaji)]
+        ]
 viewTab : Tab -> Tab -> Html Msg
 viewTab selectedTab tab =
     li
@@ -704,6 +718,10 @@ tabToLabel tab =
 
 -- Const
 
+months : Array String
+months =
+    Array.fromList
+        ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Des"]
 
 type Tab
     = ByReleaseDate
