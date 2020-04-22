@@ -12,10 +12,12 @@ const purgecss = require('@fullhuman/postcss-purgecss')({
 })
 
 
-module.exports = {
-  plugins: [
+module.exports = ({ options }) => {
+  return {
+    plugins: [
     require('tailwindcss'),
     require('autoprefixer'),
-    ...process.env === 'production' ? purgecss : []
-  ]
+    options.mode === 'production' ? purgecss : undefined
+    ]
+  }
 }
