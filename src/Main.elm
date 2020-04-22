@@ -6,7 +6,7 @@ import Compare exposing (by, concat)
 import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, placeholder, src, value)
+import Html.Attributes exposing (class, classList, href, placeholder, src, value)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder, at, field, int, maybe, string)
@@ -331,9 +331,31 @@ navItemsToLabel navItem =
 
 view : Model -> Html Msg
 view model =
-    div [ class "flex flex-col bg-bg-1" ]
+    div [ class "flex flex-col bg-bg-1 h-screen" ]
         [ viewHeader model
         , viewMain model
+        , viewFooter
+        ]
+
+
+viewFooter : Html msg
+viewFooter =
+    div
+        [ class "h-12 flex-shrink-0 bg-bg-2 flex flex-col items-center"
+        , class "justify-center text-alt-2 text-xs mt-4"
+        ]
+        [ span []
+            [ text "Data provided by "
+            , a [ href "https://anilist.co" ] [ text "Anilist. " ]
+            , text "Color theme "
+            , a [ href "https://ethanschoonover.com/solarized/" ] [ text "solarized" ]
+            ]
+        , br [] []
+        , span []
+            [ a [ href "https://github.com/detikpw/ani-app" ] [ text "Site Source " ]
+            , text "© 2020 "
+            , a [ href "https://twitter.com/2nd_frozenheart" ] [ text "2nd_frozenheart" ]
+            ]
         ]
 
 
@@ -368,7 +390,10 @@ viewNav activeNavItem =
 
 viewHeader : Model -> Html Msg
 viewHeader model =
-    header [ class "flex flex-row items-center bg-bg-2 h-12" ] []
+    header [ class "flex flex-col items-center justify-center bg-bg-2 h-12 flex-shrink-0" ]
+        [ div [ class "w-10/12 text-lg text-alt-2" ]
+            [ text "AniApp" ]
+        ]
 
 
 viewAutoCompleteItem : Media -> Html Msg
@@ -412,7 +437,7 @@ viewAutoComplete mediaList =
 
         _ ->
             div
-                [ class "absolute z-10 inset-x-0 top-1 px-2"
+                [ class "z-10 inset-x-0 top-1 px-2 flex-grow"
                 , class "bg-bg-1 text-sm text-primary w-full h-full"
                 ]
                 (List.map viewAutoCompleteItem mediaList)
@@ -420,12 +445,16 @@ viewAutoComplete mediaList =
 
 viewMain : Model -> Html Msg
 viewMain model =
-    div [ class "flex flex-col items-center h-full flex-grow bg-bg-1 px-4" ]
-        [ div
-            [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-8" ]
+    div [ class "flex flex-col items-center flex-grow bg-bg-1 px-4" ]
+        [ div [ class "w-11/12 text-left text-primary text-lg mt-4" ]
+            [ text "AniChrono"
+            , div [ class "text-sm" ] [ text "Get anime list in the order release date or story timeline" ]
+            ]
+        , div
+            [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
             [ span [ class "text-alt-2 items-center px-2 text-base" ]
                 [ text "Please type an anime title" ]
-            , div [ class "relative w-full" ]
+            , div [ class "relative w-full flex flex-col" ]
                 [ input
                     [ class "text-lg bg-bg-1 text-primary w-full px-2 h-8"
                     , value model.input
@@ -443,16 +472,20 @@ viewMain model =
 viewTabs : Model -> Html Msg
 viewTabs { relatedAnime, animeList, selectedTab } =
     case ( relatedAnime, animeList ) of
-        -- ([], []) ->
-        --     Html.text ""
+        ( [], [] ) ->
+            Html.text ""
+
         ( ra, [] ) ->
             div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
                 [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
                     List.map (viewTab selectedTab) tabs
                 , div [ class "flex flex-col w-full" ]
-                    ( case selectedTab of
-                        ByStoryTimeline -> List.map viewCard relatedAnime
-                        ByReleaseDate -> List.map viewCard (sortByReleaseDate relatedAnime)
+                    (case selectedTab of
+                        ByStoryTimeline ->
+                            List.map viewCard relatedAnime
+
+                        ByReleaseDate ->
+                            List.map viewCard (sortByReleaseDate relatedAnime)
                     )
                 ]
 
@@ -483,7 +516,7 @@ viewTab selectedTab tab =
             ]
         , onClick (SelectTab tab)
         ]
-        [ span [ class "mx-auto" ] [ text (tabToLabel tab) ] ]
+        [ span [ class "mx-auto text-sm" ] [ text (tabToLabel tab) ] ]
 
 
 
@@ -747,4 +780,4 @@ navMenuItems =
 
 tabs : List Tab
 tabs =
-    [ ByReleaseDate, ByStoryTimeline ]
+    [ ByStoryTimeline, ByReleaseDate ]
