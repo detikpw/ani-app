@@ -2,6 +2,7 @@
 
 body {
   font-family: 'Inter', sans-serif;
+  @apply bg-bg-1;
 }
 
 @tailwind components;

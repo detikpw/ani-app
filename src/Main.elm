@@ -1,18 +1,18 @@
 module Main exposing (main)
 
+import Array exposing (Array)
 import Browser
 import Compare exposing (by, concat)
 import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, placeholder, value, src)
+import Html.Attributes exposing (class, classList, placeholder, src, value)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (Error)
 import Json.Decode as Decode exposing (Decoder, at, field, int, maybe, string)
 import Json.Encode as Encode
 import Process
 import Task
-import Array exposing (Array)
 
 
 main : Program () Model Msg
@@ -88,7 +88,7 @@ type RelationType
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { activeNavItem = Transport
-      , selectedTab = ByReleaseDate
+      , selectedTab = ByStoryTimeline
       , input = ""
       , animeList = []
       , relatedAnime = []
@@ -331,7 +331,7 @@ navItemsToLabel navItem =
 
 view : Model -> Html Msg
 view model =
-    div [ class "h-screen flex flex-col" ]
+    div [ class "flex flex-col bg-bg-1" ]
         [ viewHeader model
         , viewMain model
         ]
@@ -420,7 +420,7 @@ viewAutoComplete mediaList =
 
 viewMain : Model -> Html Msg
 viewMain model =
-    div [ class "flex flex-col items-center h-full bg-bg-1 px-4" ]
+    div [ class "flex flex-col items-center h-full flex-grow bg-bg-1 px-4" ]
         [ div
             [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-8" ]
             [ span [ class "text-alt-2 items-center px-2 text-base" ]
@@ -442,30 +442,37 @@ viewMain model =
 
 viewTabs : Model -> Html Msg
 viewTabs { relatedAnime, animeList, selectedTab } =
-    case (relatedAnime, animeList) of
+    case ( relatedAnime, animeList ) of
         -- ([], []) ->
         --     Html.text ""
-        (ra, []) ->
+        ( ra, [] ) ->
             div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
                 [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
                     List.map (viewTab selectedTab) tabs
-                , div [ class "flex flex-col w-full"]
-                    (List.map viewCard relatedAnime)
+                , div [ class "flex flex-col w-full" ]
+                    ( case selectedTab of
+                        ByStoryTimeline -> List.map viewCard relatedAnime
+                        ByReleaseDate -> List.map viewCard (sortByReleaseDate relatedAnime)
+                    )
                 ]
-                
+
         _ ->
             Html.text ""
 
+
 viewCard : BasicInfo -> Html msg
 viewCard basicInfo =
-    div [ class "flex w-full mt-4"]
-        [ img 
+    div [ class "flex w-full mt-4" ]
+        [ img
             [ src basicInfo.coverImage
             , class "w-1/2 mr-2"
-            ] []
-        , div [class "flex flex-col w-1/2 text-primary text-sm"]
-            [text ("title: " ++ basicInfo.title.romaji)]
+            ]
+            []
+        , div [ class "flex flex-col w-1/2 text-primary text-sm" ]
+            [ text ("title: " ++ basicInfo.title.romaji) ]
         ]
+
+
 viewTab : Tab -> Tab -> Html Msg
 viewTab selectedTab tab =
     li
@@ -670,29 +677,27 @@ enqueueDebounceFor str =
         |> Task.perform (\_ -> TimePassed str)
 
 
-sortByReleaseDate : List Media -> List Media
-sortByReleaseDate mediaList =
+sortByReleaseDate : List BasicInfo -> List BasicInfo
+sortByReleaseDate basicInfoList =
     List.sortWith
         (concat
             [ by
-                (\media ->
-                    media
-                        |> mediaToBasicInfo
+                (\basicInfo ->
+                    basicInfo
                         |> .startDate
                         |> .year
                         |> Maybe.withDefault 0
                 )
             , by
-                (\media ->
-                    media
-                        |> mediaToBasicInfo
+                (\basicInfo ->
+                    basicInfo
                         |> .startDate
                         |> .month
                         |> Maybe.withDefault 0
                 )
             ]
         )
-        mediaList
+        basicInfoList
 
 
 mediaToBasicInfo : Media -> BasicInfo
@@ -718,10 +723,12 @@ tabToLabel tab =
 
 -- Const
 
+
 months : Array String
 months =
     Array.fromList
-        ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Des"]
+        [ "Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Des" ]
+
 
 type Tab
     = ByReleaseDate
