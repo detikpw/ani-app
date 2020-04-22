@@ -129,9 +129,19 @@ update msg model =
             ( { model | selectedTab = tab }, Cmd.none )
 
         InputOccurred str ->
-            ( { model | input = str }
-            , enqueueDebounceFor str
-            )
+            case str of
+                "" ->
+                    ( { model
+                        | input = str
+                        , animeList = []
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( { model | input = str }
+                    , enqueueDebounceFor str
+                    )
 
         TimePassed debouncedString ->
             if debouncedString == model.input then
@@ -141,17 +151,18 @@ update msg model =
                 ( model, enqueueDebounceFor model.input )
 
         QueryAnimeListBySearch arg ->
-            let
-                z =
-                    Debug.log "test" arg
-            in
-            case arg of
-                Ok value ->
+            case ( model.input, arg ) of
+                ( "", _ ) ->
+                    ( { model | animeList = [] }
+                    , Cmd.none
+                    )
+
+                ( _, Ok value ) ->
                     ( { model | animeList = value }
                     , Cmd.none
                     )
 
-                Err e ->
+                ( _, Err e ) ->
                     let
                         a =
                             Debug.log "Query" e
