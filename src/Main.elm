@@ -438,8 +438,21 @@ viewMain model =
                 , viewAutoComplete model.animeList
                 ]
             ]
-        , viewTabs model.selectedTab
+        , viewTabs model
         ]
+
+
+viewTabs : Model -> Html Msg
+viewTabs model =
+    case model.relatedAnime of
+        [] ->
+            Html.text ""
+
+        _ ->
+            div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
+                [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
+                    List.map (viewTab model.selectedTab) tabs
+                ]
 
 
 viewTab : Tab -> Tab -> Html Msg
@@ -453,14 +466,6 @@ viewTab selectedTab tab =
         , onClick (SelectTab tab)
         ]
         [ span [ class "mx-auto" ] [ text (tabToLabel tab) ] ]
-
-
-viewTabs : Tab -> Html Msg
-viewTabs selectedTab =
-    div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
-        [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
-            List.map (viewTab selectedTab) tabs
-        ]
 
 
 
