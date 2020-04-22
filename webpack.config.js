@@ -30,7 +30,8 @@ module.exports = env => {
           exclude: [/elm-stuff/, /node_modules/],
           loader: "elm-webpack-loader",
           options: {
-            debug: !env.production
+            debug: !env.production,
+            pathToElm: 'node_modules/.bin/elm'
           }
         },
       ]

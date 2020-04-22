@@ -350,7 +350,6 @@ viewFooter =
             , text "Color theme "
             , a [ href "https://ethanschoonover.com/solarized/" ] [ text "solarized" ]
             ]
-        , br [] []
         , span []
             [ a [ href "https://github.com/detikpw/ani-app" ] [ text "Site Source " ]
             , text "© 2020 "
