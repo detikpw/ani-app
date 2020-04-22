@@ -3,6 +3,7 @@ const HtmlWebPackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+const ClosurePlugin = require('closure-webpack-plugin');
 
 module.exports = env => {
   const mode = env.production ? 'production' : 'development';
@@ -31,7 +32,8 @@ module.exports = env => {
           loader: "elm-webpack-loader",
           options: {
             debug: !env.production,
-            pathToElm: 'node_modules/.bin/elm'
+            pathToElm: 'node_modules/.bin/elm',
+            // optimize: env.production
           }
         },
       ]
@@ -46,7 +48,11 @@ module.exports = env => {
       }),
     ],
     optimization: {
-      minimizer: [new TerserPlugin(), new OptimizeCSSAssetsPlugin()],
+      minimizer: [
+        new TerserPlugin(),
+        new OptimizeCSSAssetsPlugin(),
+        new ClosurePlugin({mode: 'STANDARD'})
+      ],
     },
     devServer: {
       inline: true,
