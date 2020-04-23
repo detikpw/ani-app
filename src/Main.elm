@@ -534,7 +534,7 @@ viewTab selectedTab tab =
     button
         [ classList
             [ ( "text-primary px-2 inline-flex items-center w-1/2", True )
-            , ( "relative h-full cursor-pointer hover:text-alt-2", True )
+            , ( "relative h-full cursor-pointer hover:text-alt-2 focus:outline-none", True )
             , ( "selected-nav-menu-item", selectedTab == tab )
             ]
         , onClick (SelectTab tab)
