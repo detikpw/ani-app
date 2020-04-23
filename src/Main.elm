@@ -42,6 +42,7 @@ type alias Model =
     , selectedTab : Tab
     , selectedTitle : String
     , input : String
+    , error : String
     , animeList : List Media
     , relatedAnime : List BasicInfo
     , relationsEdge : List Edge
@@ -91,6 +92,7 @@ init _ =
     ( { activeNavItem = Transport
       , selectedTab = ByStoryTimeline
       , input = ""
+      , error = ""
       , animeList = []
       , relatedAnime = []
       , relationsEdge = []
@@ -160,17 +162,15 @@ update msg model =
                     )
 
                 ( _, Ok value ) ->
-                    ( { model | animeList = value }
+                    ( { model 
+                        | animeList = value 
+                        , error = ""
+                    }
                     , Cmd.none
                     )
 
                 ( _, Err e ) ->
-                    let
-                        a =
-                            Debug.log "Query" e
-                    in
-                    Debug.todo "QueryAnimeListBySearch gan"
-
+                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
         QueryRelatedAnime arg ->
             case arg of
                 Ok value ->
@@ -217,6 +217,7 @@ update msg model =
                         | relatedAnime = prequel ++ current ++ sequel
                         , selectedTitle = currentTitle
                         , input = ""
+                        , error = ""
                       }
                     , Cmd.batch
                         [ case prequel of
@@ -239,8 +240,7 @@ update msg model =
                         a =
                             Debug.log "Query" e
                     in
-                    Debug.todo "QueryRelatedAnime gan"
-
+                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
         QueryPrequelAnime arg ->
             case arg of
                 Ok value ->
@@ -262,6 +262,7 @@ update msg model =
                     in
                     ( { model
                         | relatedAnime = prequel ++ model.relatedAnime
+                        , error = ""
                       }
                     , case prequel of
                         [ p ] ->
@@ -272,8 +273,7 @@ update msg model =
                     )
 
                 Err e ->
-                    Debug.todo "QueryPrequelAnime nanti ya gan"
-
+                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
         QuerySequelAnime arg ->
             case arg of
                 Ok value ->
@@ -295,6 +295,7 @@ update msg model =
                     in
                     ( { model
                         | relatedAnime = model.relatedAnime ++ sequel
+                        , error = ""
                       }
                     , case sequel of
                         [ s ] ->
@@ -305,8 +306,7 @@ update msg model =
                     )
 
                 Err e ->
-                    Debug.todo "QuerySequelAnime nanti ya gan"
-
+                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
         SearchRelatedAnime id title ->
             ( { model
                 | animeList = []
@@ -479,6 +479,7 @@ viewMain model =
                     , onInput InputOccurred
                     ]
                     []
+                , span [class "text-xs text-alt-4"] [text model.error]
                 , viewAutoComplete model.animeList
                 ]
             ]
@@ -488,14 +489,14 @@ viewMain model =
 
 
 viewTabs : Model -> Html Msg
-viewTabs { relatedAnime, animeList, selectedTab } =
-    case ( relatedAnime, animeList ) of
-        ( [], [] ) ->
+viewTabs { relatedAnime, animeList, selectedTab, error } =
+    case ( relatedAnime, animeList, error ) of
+        ( [], [], _ ) ->
             Html.text ""
 
-        ( ra, [] ) ->
+        ( ra, [], "" ) ->
             div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-2" ]
-                [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
+                [ div [ class "inline-flex list-none mr-auto w-full" ] <|
                     List.map (viewTab selectedTab) tabs
                 , div [ class "flex flex-col w-full" ]
                     (case selectedTab of
@@ -519,14 +520,14 @@ viewCard basicInfo =
             , class "w-1/2 mr-2"
             ]
             []
-        , div [ class "flex flex-col w-1/2 text-primary text-xs" ]
+        , div [ class "flex flex-col w-1/2 text-primary text-xs leading-tight" ]
             [ text ("title: " ++ basicInfo.title.romaji) ]
         ]
 
 
 viewTab : Tab -> Tab -> Html Msg
 viewTab selectedTab tab =
-    li
+    button
         [ classList
             [ ( "text-primary px-2 inline-flex items-center w-1/2", True )
             , ( "relative h-full cursor-pointer hover:text-alt-2", True )

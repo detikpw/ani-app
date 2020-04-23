@@ -10,7 +10,7 @@ body {
 .selected-nav-menu-item:after {
   content: '';
   position: absolute;
-  bottom: 0;
+  bottom: -4px;
   height: 2px;
   left: 8px;
   right: 8px;
