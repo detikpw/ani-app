@@ -40,6 +40,7 @@ type NavItem
 type alias Model =
     { activeNavItem : NavItem
     , selectedTab : Tab
+    , selectedTitle : String
     , input : String
     , animeList : List Media
     , relatedAnime : List BasicInfo
@@ -93,6 +94,7 @@ init _ =
       , animeList = []
       , relatedAnime = []
       , relationsEdge = []
+      , selectedTitle = ""
       }
     , Cmd.none
     )
@@ -202,9 +204,19 @@ update msg model =
 
                         ( prequel, current, sequel ) =
                             relations
+
+                        currentTitle =
+                            List.head current
+                                |> Maybe.andThen
+                                    (\basicInfo ->
+                                        Just (.romaji (.title basicInfo))
+                                    )
+                                |> Maybe.withDefault ""
                     in
                     ( { model
                         | relatedAnime = prequel ++ current ++ sequel
+                        , selectedTitle = currentTitle
+                        , input = ""
                       }
                     , Cmd.batch
                         [ case prequel of
@@ -470,6 +482,7 @@ viewMain model =
                 , viewAutoComplete model.animeList
                 ]
             ]
+        , div [ class "text-alt-2 w-10/12 mt-2 px-2" ] [ text model.selectedTitle ]
         , viewTabs model
         ]
 
@@ -481,7 +494,7 @@ viewTabs { relatedAnime, animeList, selectedTab } =
             Html.text ""
 
         ( ra, [] ) ->
-            div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
+            div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-2" ]
                 [ ul [ class "inline-flex list-none mr-auto w-full" ] <|
                     List.map (viewTab selectedTab) tabs
                 , div [ class "flex flex-col w-full" ]
@@ -506,7 +519,7 @@ viewCard basicInfo =
             , class "w-1/2 mr-2"
             ]
             []
-        , div [ class "flex flex-col w-1/2 text-primary text-sm" ]
+        , div [ class "flex flex-col w-1/2 text-primary text-xs" ]
             [ text ("title: " ++ basicInfo.title.romaji) ]
         ]
 
