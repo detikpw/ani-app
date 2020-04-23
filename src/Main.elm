@@ -162,15 +162,16 @@ update msg model =
                     )
 
                 ( _, Ok value ) ->
-                    ( { model 
-                        | animeList = value 
+                    ( { model
+                        | animeList = value
                         , error = ""
-                    }
+                      }
                     , Cmd.none
                     )
 
                 ( _, Err e ) ->
-                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
+                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+
         QueryRelatedAnime arg ->
             case arg of
                 Ok value ->
@@ -240,7 +241,8 @@ update msg model =
                         a =
                             Debug.log "Query" e
                     in
-                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
+                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+
         QueryPrequelAnime arg ->
             case arg of
                 Ok value ->
@@ -273,7 +275,8 @@ update msg model =
                     )
 
                 Err e ->
-                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
+                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+
         QuerySequelAnime arg ->
             case arg of
                 Ok value ->
@@ -306,7 +309,8 @@ update msg model =
                     )
 
                 Err e ->
-                    ({model | error = "Oops somthing went wrong"}, Cmd.none)
+                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+
         SearchRelatedAnime id title ->
             ( { model
                 | animeList = []
@@ -479,7 +483,7 @@ viewMain model =
                     , onInput InputOccurred
                     ]
                     []
-                , span [class "text-xs text-alt-4"] [text model.error]
+                , span [ class "text-xs text-alt-4 px-2" ] [ text model.error ]
                 , viewAutoComplete model.animeList
                 ]
             ]
