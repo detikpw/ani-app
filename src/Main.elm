@@ -149,7 +149,7 @@ update msg model =
 
         TimePassed debouncedString ->
             if debouncedString == model.input then
-                ( model, searchAnimeBySearch model.input )
+                ( model, requestAnimeBySearch model.input )
 
             else
                 ( model, enqueueDebounceFor model.input )
@@ -223,13 +223,13 @@ update msg model =
                     , Cmd.batch
                         [ case prequel of
                             [ p ] ->
-                                searchPrequelAnime [ p.id ]
+                                requestPrequelAnime [ p.id ]
 
                             _ ->
                                 Cmd.none
                         , case sequel of
                             [ s ] ->
-                                searchSequelAnime [ s.id ]
+                                requestSequelAnime [ s.id ]
 
                             _ ->
                                 Cmd.none
@@ -268,7 +268,7 @@ update msg model =
                       }
                     , case prequel of
                         [ p ] ->
-                            searchPrequelAnime [ p.id ]
+                            requestPrequelAnime [ p.id ]
 
                         _ ->
                             Cmd.none
@@ -302,7 +302,7 @@ update msg model =
                       }
                     , case sequel of
                         [ s ] ->
-                            searchSequelAnime [ s.id ]
+                            requestSequelAnime [ s.id ]
 
                         _ ->
                             Cmd.none
@@ -316,7 +316,7 @@ update msg model =
                 | animeList = []
                 , input = title
               }
-            , searchAnimeByIds [ id ]
+            , requestAnimeByIds [ id ]
             )
 
 
@@ -626,23 +626,7 @@ relationTypeDecoder : Decoder RelationType
 relationTypeDecoder =
     Decode.map stringToRelationType string
 
-
-
--- Helper
-
-
-stringToRelationType : String -> RelationType
-stringToRelationType value =
-    case value of
-        "PREQUEL" ->
-            Prequel
-
-        "SEQUEL" ->
-            Sequel
-
-        _ ->
-            Other
-
+-- Request
 
 animeRequest : Operation Query Variables
 animeRequest =
@@ -700,36 +684,50 @@ options =
     { url = "https://graphql.anilist.co", headers = [] }
 
 
-searchAnimeBySearch : String -> Cmd Msg
-searchAnimeBySearch value =
+requestAnimeBySearch : String -> Cmd Msg
+requestAnimeBySearch value =
     GraphQl.query animeRequest
         |> GraphQl.addVariables [ ( "search", Encode.string value ) ]
         |> GraphQl.Http.send options QueryAnimeListBySearch mediaListDecoder
 
 
-prepareSearchAnimeByIds : List Int -> GraphQl.Request Query Variables
-prepareSearchAnimeByIds values =
+prepareRequestAnimeByIds : List Int -> GraphQl.Request Query Variables
+prepareRequestAnimeByIds values =
     GraphQl.query animeRequest
         |> GraphQl.addVariables [ ( "ids", Encode.list Encode.int values ) ]
 
 
-searchAnimeByIds : List Int -> Cmd Msg
-searchAnimeByIds values =
-    prepareSearchAnimeByIds values
+requestAnimeByIds : List Int -> Cmd Msg
+requestAnimeByIds values =
+    prepareRequestAnimeByIds values
         |> GraphQl.Http.send options QueryRelatedAnime mediaListDecoder
 
 
-searchPrequelAnime : List Int -> Cmd Msg
-searchPrequelAnime values =
-    prepareSearchAnimeByIds values
+requestPrequelAnime : List Int -> Cmd Msg
+requestPrequelAnime values =
+    prepareRequestAnimeByIds values
         |> GraphQl.Http.send options QueryPrequelAnime mediaListDecoder
 
 
-searchSequelAnime : List Int -> Cmd Msg
-searchSequelAnime values =
-    prepareSearchAnimeByIds values
+requestSequelAnime : List Int -> Cmd Msg
+requestSequelAnime values =
+    prepareRequestAnimeByIds values
         |> GraphQl.Http.send options QuerySequelAnime mediaListDecoder
 
+-- Helper
+
+
+stringToRelationType : String -> RelationType
+stringToRelationType value =
+    case value of
+        "PREQUEL" ->
+            Prequel
+
+        "SEQUEL" ->
+            Sequel
+
+        _ ->
+            Other
 
 enqueueDebounceFor : String -> Cmd Msg
 enqueueDebounceFor str =
