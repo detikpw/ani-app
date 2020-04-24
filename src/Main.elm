@@ -471,24 +471,28 @@ viewMain model =
             [ text "AniChrono"
             , div [ class "text-sm" ] [ text "Get anime list in the order release date or story timeline" ]
             ]
-        , div
-            [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
-            [ span [ class "text-alt-2 items-center px-2 text-base" ]
-                [ text "Please type an anime title" ]
-            , div [ class "relative w-full flex flex-col" ]
-                [ input
-                    [ class "text-lg bg-bg-1 text-primary w-full px-2 h-8"
-                    , value model.input
-                    , placeholder "e.g Code Geass"
-                    , onInput InputOccurred
-                    ]
-                    []
-                , span [ class "text-xs text-alt-4 px-2" ] [ text model.error ]
-                , viewAutoComplete model.animeList
-                ]
-            ]
+        , viewInput model
         , div [ class "text-alt-2 w-10/12 mt-2 px-2" ] [ text model.selectedTitle ]
         , viewTabs model
+        ]
+
+
+viewInput : Model -> Html Msg
+viewInput model =
+    div [ class "flex flex-col w-11/12 bg-bg-2 rounded pt-1 pb-4 px-4 mt-4" ]
+        [ span [ class "text-alt-2 items-center px-2 text-base" ]
+            [ text "Please type an anime title" ]
+        , div [ class "relative w-full flex flex-col" ]
+            [ input
+                [ class "text-lg bg-bg-1 text-primary w-full px-2 h-8"
+                , value model.input
+                , placeholder "e.g Code Geass"
+                , onInput InputOccurred
+                ]
+                []
+            , span [ class "text-xs text-alt-4 px-2" ] [ text model.error ]
+            , viewAutoComplete model.animeList
+            ]
         ]
 
 
