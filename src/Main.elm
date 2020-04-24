@@ -112,13 +112,14 @@ type Msg
     | SelectTab Tab
     | InputOccurred String
     | TimePassed String
-    | QueryAnimeListBySearch (Result Error (List Media))
+    | QueryMsg QueryMsg
+    | SearchRelatedAnime Int String
+
+type QueryMsg
+    = QueryAnimeListBySearch (Result Error (List Media))
     | QueryRelatedAnime (Result Error (List Media))
     | QueryPrequelAnime (Result Error (List Media))
     | QuerySequelAnime (Result Error (List Media))
-    | SearchRelatedAnime Int String
-
-
 
 -- Update
 
@@ -154,6 +155,21 @@ update msg model =
             else
                 ( model, enqueueDebounceFor model.input )
 
+        QueryMsg query -> 
+            updateQuery query model
+                
+
+        SearchRelatedAnime id title ->
+            ( { model
+                | animeList = []
+                , input = title
+              }
+            , requestAnimeByIds [ id ]
+            )
+
+updateQuery : QueryMsg -> Model -> (Model, Cmd Msg)
+updateQuery query model =
+    case query of
         QueryAnimeListBySearch arg ->
             case ( model.input, arg ) of
                 ( "", _ ) ->
@@ -165,161 +181,142 @@ update msg model =
                     ( { model
                         | animeList = value
                         , error = ""
-                      }
+                    }
                     , Cmd.none
                     )
 
                 ( _, Err e ) ->
                     ( { model | error = "Oops somthing went wrong" }, Cmd.none )
 
-        QueryRelatedAnime arg ->
-            case arg of
-                Ok value ->
-                    let
-                        ( node, edges ) =
-                            List.head value
-                                |> Maybe.andThen
-                                    (\media ->
-                                        case media of
-                                            Standard v ->
-                                                Just ( v, Just [] )
+        QueryRelatedAnime (Ok value) ->
+            let
+                ( node, edges ) =
+                    List.head value
+                        |> Maybe.andThen
+                            (\media ->
+                                case media of
+                                    Standard v ->
+                                        Just ( v, Just [] )
 
-                                            Extended v z ->
-                                                Just ( v, z )
+                                    Extended v z ->
+                                        Just ( v, z )
+                            )
+                        |> Maybe.withDefault ( initBasicInfo, Nothing )
+
+                relations =
+                    edges
+                        |> Maybe.andThen
+                            (\items ->
+                                Just
+                                    ( List.filter (\edge -> .relationType edge == Prequel) items
+                                        |> List.map .node
+                                    , [ node ]
+                                    , List.filter (\edge -> .relationType edge == Sequel) items
+                                        |> List.map .node
                                     )
-                                |> Maybe.withDefault ( initBasicInfo, Nothing )
+                            )
+                        |> Maybe.withDefault ( [], [], [] )
 
-                        relations =
-                            edges
-                                |> Maybe.andThen
-                                    (\items ->
-                                        Just
-                                            ( List.filter (\edge -> .relationType edge == Prequel) items
-                                                |> List.map .node
-                                            , [ node ]
-                                            , List.filter (\edge -> .relationType edge == Sequel) items
-                                                |> List.map .node
-                                            )
-                                    )
-                                |> Maybe.withDefault ( [], [], [] )
+                ( prequel, current, sequel ) =
+                    relations
 
-                        ( prequel, current, sequel ) =
-                            relations
-
-                        currentTitle =
-                            List.head current
-                                |> Maybe.andThen
-                                    (\basicInfo ->
-                                        Just (.romaji (.title basicInfo))
-                                    )
-                                |> Maybe.withDefault ""
-                    in
-                    ( { model
-                        | relatedAnime = prequel ++ current ++ sequel
-                        , selectedTitle = currentTitle
-                        , input = ""
-                        , error = ""
-                      }
-                    , Cmd.batch
-                        [ case prequel of
-                            [ p ] ->
-                                requestPrequelAnime [ p.id ]
-
-                            _ ->
-                                Cmd.none
-                        , case sequel of
-                            [ s ] ->
-                                requestSequelAnime [ s.id ]
-
-                            _ ->
-                                Cmd.none
-                        ]
-                    )
-
-                Err e ->
-                    let
-                        a =
-                            Debug.log "Query" e
-                    in
-                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
-
-        QueryPrequelAnime arg ->
-            case arg of
-                Ok value ->
-                    let
-                        prequel =
-                            List.head value
-                                |> Maybe.andThen
-                                    (\sm ->
-                                        case sm of
-                                            Standard _ ->
-                                                Just []
-
-                                            Extended _ z ->
-                                                z
-                                    )
-                                |> Maybe.withDefault []
-                                |> List.filter (\edge -> .relationType edge == Prequel)
-                                |> List.map .node
-                    in
-                    ( { model
-                        | relatedAnime = prequel ++ model.relatedAnime
-                        , error = ""
-                      }
-                    , case prequel of
-                        [ p ] ->
-                            requestPrequelAnime [ p.id ]
-
-                        _ ->
-                            Cmd.none
-                    )
-
-                Err e ->
-                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
-
-        QuerySequelAnime arg ->
-            case arg of
-                Ok value ->
-                    let
-                        sequel =
-                            List.head value
-                                |> Maybe.andThen
-                                    (\sm ->
-                                        case sm of
-                                            Standard _ ->
-                                                Just []
-
-                                            Extended _ z ->
-                                                z
-                                    )
-                                |> Maybe.withDefault []
-                                |> List.filter (\edge -> .relationType edge == Sequel)
-                                |> List.map .node
-                    in
-                    ( { model
-                        | relatedAnime = model.relatedAnime ++ sequel
-                        , error = ""
-                      }
-                    , case sequel of
-                        [ s ] ->
-                            requestSequelAnime [ s.id ]
-
-                        _ ->
-                            Cmd.none
-                    )
-
-                Err e ->
-                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
-
-        SearchRelatedAnime id title ->
+                currentTitle =
+                    List.head current
+                        |> Maybe.andThen
+                            (\basicInfo ->
+                                Just (.romaji (.title basicInfo))
+                            )
+                        |> Maybe.withDefault ""
+            in
             ( { model
-                | animeList = []
-                , input = title
-              }
-            , requestAnimeByIds [ id ]
+                | relatedAnime = prequel ++ current ++ sequel
+                , selectedTitle = currentTitle
+                , input = ""
+                , error = ""
+            }
+            , Cmd.batch
+                [ case prequel of
+                    [ p ] ->
+                        requestPrequelAnime [ p.id ]
+
+                    _ ->
+                        Cmd.none
+                , case sequel of
+                    [ s ] ->
+                        requestSequelAnime [ s.id ]
+
+                    _ ->
+                        Cmd.none
+                ]
             )
 
+        QueryRelatedAnime (Err e) ->
+            ( { model | error = "Oops somthing went wrong" }, Cmd.none )
 
+        QueryPrequelAnime (Ok value) ->
+            let
+                prequel =
+                    List.head value
+                        |> Maybe.andThen
+                            (\sm ->
+                                case sm of
+                                    Standard _ ->
+                                        Just []
+
+                                    Extended _ z ->
+                                        z
+                            )
+                        |> Maybe.withDefault []
+                        |> List.filter (\edge -> .relationType edge == Prequel)
+                        |> List.map .node
+            in
+            ( { model
+                | relatedAnime = prequel ++ model.relatedAnime
+                , error = ""
+            }
+            , case prequel of
+                [ p ] ->
+                    requestPrequelAnime [ p.id ]
+
+                _ ->
+                    Cmd.none
+            )
+
+        QueryPrequelAnime (Err _) ->
+                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+
+        QuerySequelAnime (Ok value) ->
+            let
+                sequel =
+                    List.head value
+                        |> Maybe.andThen
+                            (\sm ->
+                                case sm of
+                                    Standard _ ->
+                                        Just []
+
+                                    Extended _ z ->
+                                        z
+                            )
+                        |> Maybe.withDefault []
+                        |> List.filter (\edge -> .relationType edge == Sequel)
+                        |> List.map .node
+            in
+            ( { model
+                | relatedAnime = model.relatedAnime ++ sequel
+                , error = ""
+            }
+            , case sequel of
+                [ s ] ->
+                    requestSequelAnime [ s.id ]
+
+                _ ->
+                    Cmd.none
+            )
+        QuerySequelAnime (Err _) ->
+            ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+            
+    
 
 -- Subcriptions
 
@@ -688,7 +685,7 @@ requestAnimeBySearch : String -> Cmd Msg
 requestAnimeBySearch value =
     GraphQl.query animeRequest
         |> GraphQl.addVariables [ ( "search", Encode.string value ) ]
-        |> GraphQl.Http.send options QueryAnimeListBySearch mediaListDecoder
+        |> GraphQl.Http.send options (QueryMsg << QueryAnimeListBySearch) mediaListDecoder
 
 
 prepareRequestAnimeByIds : List Int -> GraphQl.Request Query Variables
@@ -700,19 +697,19 @@ prepareRequestAnimeByIds values =
 requestAnimeByIds : List Int -> Cmd Msg
 requestAnimeByIds values =
     prepareRequestAnimeByIds values
-        |> GraphQl.Http.send options QueryRelatedAnime mediaListDecoder
+        |> GraphQl.Http.send options (QueryMsg << QueryRelatedAnime) mediaListDecoder
 
 
 requestPrequelAnime : List Int -> Cmd Msg
 requestPrequelAnime values =
     prepareRequestAnimeByIds values
-        |> GraphQl.Http.send options QueryPrequelAnime mediaListDecoder
+        |> GraphQl.Http.send options (QueryMsg << QueryPrequelAnime) mediaListDecoder
 
 
 requestSequelAnime : List Int -> Cmd Msg
 requestSequelAnime values =
     prepareRequestAnimeByIds values
-        |> GraphQl.Http.send options QuerySequelAnime mediaListDecoder
+        |> GraphQl.Http.send options (\a -> QueryMsg (QuerySequelAnime a)) mediaListDecoder
 
 -- Helper
 
