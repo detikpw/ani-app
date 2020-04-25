@@ -161,7 +161,7 @@ update msg model =
                 ( model, requestAnimeBySearch model.input )
 
             else
-                ( model, enqueueDebounceFor model.input )
+                ( model, Cmd.none )
 
         QueryMsg query ->
             updateQuery query model
