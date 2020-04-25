@@ -502,46 +502,24 @@ viewCard basicInfo =
     div [ class "w-full mt-4 text-primary text-xs leading-tight" ]
         [ img
             [ src basicInfo.coverImage
-            , class "mr-2 float-left w-1/2"
+            , class "mr-2 float-left w-1/3"
             ]
             []
         , pre [ class "whitespace-pre-wrap" ]
             [ text ("title: " ++ basicInfo.title.romaji ++ "\n")
-            , viewDateSegment (Year basicInfo.startDate.year)
-            , viewDateSegment (Month basicInfo.startDate.month)
-            , viewDateSegment (Day basicInfo.startDate.day)
+            , viewDate basicInfo.startDate
             ]
         ]
 
 
-type Date
-    = Year (Maybe Int)
-    | Month (Maybe Int)
-    | Day (Maybe Int)
+viewDate : StartDate -> Html msg
+viewDate date =
+    case dateToString date of
+        "" ->
+            text ""
 
-
-viewDateSegment : Date -> Html msg
-viewDateSegment date =
-    let
-        toString v =
-            Maybe.andThen (Just << String.fromInt) v
-                |> Maybe.withDefault ""
-    in
-    case date of
-        Year value ->
-            text ("year: " ++ toString value ++ "\n")
-
-        Month value ->
-            text ("month: " ++ toString value ++ "\n")
-
-        Day value ->
-            text ("day: " ++ toString value ++ "\n")
-
-
-year : Maybe Int -> String
-year value =
-    Maybe.withDefault 0 value
-        |> String.fromInt
+        d ->
+            text ("start date: " ++ d)
 
 
 viewTab : Tab -> Tab -> Html Msg
@@ -731,6 +709,31 @@ requestSequelAnime values =
 
 
 -- Helper
+
+
+dateToString : StartDate -> String
+dateToString { year, month, day } =
+    case ( year, month, day ) of
+        ( Just y, Just m, Just d ) ->
+            let
+                m_ =
+                    Array.get (m - 1) months
+
+                d_ =
+                    String.fromInt d
+
+                y_ =
+                    String.fromInt y
+            in
+            case m_ of
+                Just monthInString ->
+                    monthInString ++ " " ++ d_ ++ ", " ++ y_
+
+                _ ->
+                    ""
+
+        _ ->
+            ""
 
 
 stringToRelationType : String -> RelationType
