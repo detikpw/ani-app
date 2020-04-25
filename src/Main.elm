@@ -95,6 +95,11 @@ init _ =
       , error = ""
       , animeList = []
       , relatedAnime = []
+
+      --   , relatedAnime = [
+      --       BasicInfo 0 (Title "Test" Nothing) (StartDate Nothing Nothing Nothing)
+      --       "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx101922-PEn1CTc93blC.jpg"
+      --   ]
       , relationsEdge = []
       , selectedTitle = ""
       }
@@ -494,15 +499,49 @@ viewTabs { relatedAnime, animeList, selectedTab, error } =
 
 viewCard : BasicInfo -> Html msg
 viewCard basicInfo =
-    div [ class "flex w-full mt-4" ]
+    div [ class "w-full mt-4 text-primary text-xs leading-tight" ]
         [ img
             [ src basicInfo.coverImage
-            , class "w-1/2 mr-2"
+            , class "mr-2 float-left w-1/2"
             ]
             []
-        , div [ class "flex flex-col w-1/2 text-primary text-xs leading-tight" ]
-            [ text ("title: " ++ basicInfo.title.romaji) ]
+        , pre [ class "whitespace-pre-wrap" ]
+            [ text ("title: " ++ basicInfo.title.romaji ++ "\n")
+            , viewDateSegment (Year basicInfo.startDate.year)
+            , viewDateSegment (Month basicInfo.startDate.month)
+            , viewDateSegment (Day basicInfo.startDate.day)
+            ]
         ]
+
+
+type Date
+    = Year (Maybe Int)
+    | Month (Maybe Int)
+    | Day (Maybe Int)
+
+
+viewDateSegment : Date -> Html msg
+viewDateSegment date =
+    let
+        toString v =
+            Maybe.andThen (Just << String.fromInt) v
+                |> Maybe.withDefault ""
+    in
+    case date of
+        Year value ->
+            text ("year: " ++ toString value ++ "\n")
+
+        Month value ->
+            text ("month: " ++ toString value ++ "\n")
+
+        Day value ->
+            text ("day: " ++ toString value ++ "\n")
+
+
+year : Maybe Int -> String
+year value =
+    Maybe.withDefault 0 value
+        |> String.fromInt
 
 
 viewTab : Tab -> Tab -> Html Msg
