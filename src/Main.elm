@@ -115,11 +115,14 @@ type Msg
     | QueryMsg QueryMsg
     | SearchRelatedAnime Int String
 
+
 type QueryMsg
     = QueryAnimeListBySearch (Result Error (List Media))
     | QueryRelatedAnime (Result Error (List Media))
     | QueryPrequelAnime (Result Error (List Media))
     | QuerySequelAnime (Result Error (List Media))
+
+
 
 -- Update
 
@@ -155,9 +158,8 @@ update msg model =
             else
                 ( model, enqueueDebounceFor model.input )
 
-        QueryMsg query -> 
+        QueryMsg query ->
             updateQuery query model
-                
 
         SearchRelatedAnime id title ->
             ( { model
@@ -167,7 +169,8 @@ update msg model =
             , requestAnimeByIds [ id ]
             )
 
-updateQuery : QueryMsg -> Model -> (Model, Cmd Msg)
+
+updateQuery : QueryMsg -> Model -> ( Model, Cmd Msg )
 updateQuery query model =
     case query of
         QueryAnimeListBySearch arg ->
@@ -181,7 +184,7 @@ updateQuery query model =
                     ( { model
                         | animeList = value
                         , error = ""
-                    }
+                      }
                     , Cmd.none
                     )
 
@@ -233,7 +236,7 @@ updateQuery query model =
                 , selectedTitle = currentTitle
                 , input = ""
                 , error = ""
-            }
+              }
             , Cmd.batch
                 [ case prequel of
                     [ p ] ->
@@ -273,7 +276,7 @@ updateQuery query model =
             ( { model
                 | relatedAnime = prequel ++ model.relatedAnime
                 , error = ""
-            }
+              }
             , case prequel of
                 [ p ] ->
                     requestPrequelAnime [ p.id ]
@@ -283,7 +286,7 @@ updateQuery query model =
             )
 
         QueryPrequelAnime (Err _) ->
-                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+            ( { model | error = "Oops somthing went wrong" }, Cmd.none )
 
         QuerySequelAnime (Ok value) ->
             let
@@ -305,7 +308,7 @@ updateQuery query model =
             ( { model
                 | relatedAnime = model.relatedAnime ++ sequel
                 , error = ""
-            }
+              }
             , case sequel of
                 [ s ] ->
                     requestSequelAnime [ s.id ]
@@ -313,10 +316,11 @@ updateQuery query model =
                 _ ->
                     Cmd.none
             )
+
         QuerySequelAnime (Err _) ->
             ( { model | error = "Oops somthing went wrong" }, Cmd.none )
-            
-    
+
+
 
 -- Subcriptions
 
@@ -356,7 +360,7 @@ navItemsToLabel navItem =
 view : Model -> Html Msg
 view model =
     div [ class "flex flex-col bg-bg-1 h-screen" ]
-        [ viewHeader model
+        [ viewHeader
         , viewMain model
         , viewFooter
         ]
@@ -382,37 +386,8 @@ viewFooter =
         ]
 
 
-viewNavMenuItem : NavItem -> NavItem -> Html Msg
-viewNavMenuItem activeNavItem navItem =
-    let
-        isActiveNav =
-            activeNavItem == navItem
-    in
-    li
-        [ classList
-            [ ( "text-primary px-2 inline-flex items-center", True )
-            , ( "relative h-full cursor-pointer hover:text-alt-2", True )
-            , ( "selected-nav-menu-item", isActiveNav )
-            ]
-        , onClick <| SetNavItem navItem
-        ]
-        [ text <| navItemsToLabel navItem ]
-
-
-viewNavMenu : NavItem -> Html Msg
-viewNavMenu activeNavItem =
-    ul [ class "inline list-none mr-auto" ] <|
-        List.map (viewNavMenuItem activeNavItem) navMenuItems
-
-
-viewNav : NavItem -> Html Msg
-viewNav activeNavItem =
-    div [ class "flex flex-row mx-auto h-full w-10/12" ]
-        [ viewNavMenu activeNavItem ]
-
-
-viewHeader : Model -> Html Msg
-viewHeader model =
+viewHeader : Html Msg
+viewHeader =
     header [ class "flex flex-col items-center justify-center bg-bg-2 h-12 flex-shrink-0" ]
         [ div [ class "w-10/12 text-lg text-alt-2" ]
             [ text "AniApp" ]
@@ -623,7 +598,10 @@ relationTypeDecoder : Decoder RelationType
 relationTypeDecoder =
     Decode.map stringToRelationType string
 
+
+
 -- Request
+
 
 animeRequest : Operation Query Variables
 animeRequest =
@@ -711,6 +689,8 @@ requestSequelAnime values =
     prepareRequestAnimeByIds values
         |> GraphQl.Http.send options (\a -> QueryMsg (QuerySequelAnime a)) mediaListDecoder
 
+
+
 -- Helper
 
 
@@ -725,6 +705,7 @@ stringToRelationType value =
 
         _ ->
             Other
+
 
 enqueueDebounceFor : String -> Cmd Msg
 enqueueDebounceFor str =
@@ -793,11 +774,6 @@ type Tab
 debounceTimeOut : Float
 debounceTimeOut =
     200
-
-
-navMenuItems : List NavItem
-navMenuItems =
-    [ Transport, Tickets, Hotels, Cars, More ]
 
 
 tabs : List Tab
