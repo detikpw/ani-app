@@ -5,6 +5,10 @@ body {
   @apply bg-bg-1;
 }
 
+pre span {
+  @apply text-alt-2
+}
+
 @tailwind components;
 
 .selected-nav-menu-item:after {
@@ -15,6 +19,10 @@ body {
   left: 8px;
   right: 8px;
   @apply bg-alt-2;
+}
+
+.card-info pre {
+  font-size: 0.625rem;
 }
 
 @tailwind utilities;

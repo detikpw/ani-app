@@ -499,27 +499,30 @@ viewTabs { relatedAnime, animeList, selectedTab, error } =
 
 viewCard : BasicInfo -> Html msg
 viewCard basicInfo =
-    div [ class "w-full mt-4 text-primary text-xs leading-tight" ]
+    div [ class "w-full mt-4 text-primary card-info leading-tight" ]
         [ img
             [ src basicInfo.coverImage
             , class "mr-2 float-left w-1/3"
             ]
             []
         , pre [ class "whitespace-pre-wrap" ]
-            [ text ("title: " ++ basicInfo.title.romaji ++ "\n")
-            , viewDate basicInfo.startDate
-            ]
+            ([]
+                ++ viewInfoDetail "title" basicInfo.title.romaji
+                ++ viewInfoDetail "start date" (dateToString basicInfo.startDate)
+            )
         ]
 
 
-viewDate : StartDate -> Html msg
-viewDate date =
-    case dateToString date of
+viewInfoDetail : String -> String -> List (Html msg)
+viewInfoDetail label value =
+    case value of
         "" ->
-            text ""
+            [ text "" ]
 
-        d ->
-            text ("start date: " ++ d)
+        _ ->
+            [ span [] [ text (label ++ ": ") ]
+            , text (value ++ "\n")
+            ]
 
 
 viewTab : Tab -> Tab -> Html Msg
