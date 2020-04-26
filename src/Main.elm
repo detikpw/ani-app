@@ -229,15 +229,14 @@ updateQuery query model =
 
                 relations =
                     edges
-                        |> Maybe.andThen
+                        |> Maybe.map
                             (\items ->
-                                Just
-                                    ( List.filter (\edge -> .relationType edge == Prequel) items
-                                        |> List.map .node
-                                    , [ node ]
-                                    , List.filter (\edge -> .relationType edge == Sequel) items
-                                        |> List.map .node
-                                    )
+                                ( List.filter (\edge -> .relationType edge == Prequel) items
+                                    |> List.map .node
+                                , [ node ]
+                                , List.filter (\edge -> .relationType edge == Sequel) items
+                                    |> List.map .node
+                                )
                             )
                         |> Maybe.withDefault ( [], [], [] )
 
@@ -246,10 +245,7 @@ updateQuery query model =
 
                 currentTitle =
                     List.head current
-                        |> Maybe.andThen
-                            (\basicInfo ->
-                                Just (.romaji (.title basicInfo))
-                            )
+                        |> Maybe.map(.title >> .romaji)
                         |> Maybe.withDefault ""
             in
             ( { model
@@ -505,7 +501,7 @@ viewCard basicInfo =
                     ++ viewInfoDetail "start date" (dateToString basicInfo.startDate)
                     ++ viewInfoDetail "format" basicInfo.format
                     ++ viewInfoDetail "episodes"
-                        (Maybe.andThen (Just << String.fromInt) basicInfo.episodes
+                        (Maybe.map String.fromInt basicInfo.episodes
                             |> Maybe.withDefault ""
                         )
                 )
