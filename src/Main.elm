@@ -6,12 +6,15 @@ import Compare exposing (by, concat)
 import GraphQl exposing (Operation, Query, Variables)
 import GraphQl.Http exposing (Options)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, href, placeholder, src, value)
+import Html.Attributes exposing (class, classList, href, placeholder, property, src, value)
 import Html.Events exposing (onClick, onInput)
+import Html.Parser
+import Html.Parser.Util
 import Http exposing (Error)
-import Json.Decode as Decode exposing (Decoder, at, field, int, maybe, string)
+import Json.Decode as Decode exposing (Decoder, at, field, int, maybe, nullable, string)
 import Json.Encode as Encode
 import Process
+import Regex
 import Task
 
 
@@ -59,6 +62,9 @@ type alias BasicInfo =
     , title : Title
     , startDate : StartDate
     , coverImage : String
+    , format : String
+    , episodes : Maybe Int
+    , description : String
     }
 
 
@@ -109,7 +115,30 @@ init _ =
 
 initBasicInfo : BasicInfo
 initBasicInfo =
-    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing) ""
+    -- { id = 0
+    -- , title = initTitle
+    -- , startDate = initStartDate
+    -- , coverImage = ""
+    -- , episodes = 0
+    -- , format = ""
+    -- , description = ""
+    -- }
+    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing) "" "" Nothing ""
+
+
+initTitle : Title
+initTitle =
+    { romaji = ""
+    , english = Nothing
+    }
+
+
+initStartDate : StartDate
+initStartDate =
+    { year = Nothing
+    , month = Nothing
+    , day = Nothing
+    }
 
 
 type Msg
@@ -499,17 +528,28 @@ viewTabs { relatedAnime, animeList, selectedTab, error } =
 
 viewCard : BasicInfo -> Html msg
 viewCard basicInfo =
-    div [ class "w-full mt-4 text-primary card-info leading-tight" ]
-        [ img
-            [ src basicInfo.coverImage
-            , class "mr-2 float-left w-1/3"
+    div [ class "w-full mt-4 flex flex-col" ]
+        [ div [ class "w-full text-primary card-info leading-tight" ]
+            [ img
+                [ src basicInfo.coverImage
+                , class "mr-2 float-left w-1/3"
+                ]
+                []
+            , pre [ class "whitespace-pre-wrap" ]
+                ([]
+                    ++ viewInfoDetail "title" basicInfo.title.romaji
+                    ++ viewInfoDetail "start date" (dateToString basicInfo.startDate)
+                    ++ viewInfoDetail "format" basicInfo.format
+                    ++ viewInfoDetail "episodes"
+                        (Maybe.andThen (Just << String.fromInt) basicInfo.episodes
+                            |> Maybe.withDefault ""
+                        )
+                )
+            , pre
+                [ class "whitespace-pre-wrap" ]
+                [ text (removeBr basicInfo.description) ]
             ]
-            []
-        , pre [ class "whitespace-pre-wrap" ]
-            ([]
-                ++ viewInfoDetail "title" basicInfo.title.romaji
-                ++ viewInfoDetail "start date" (dateToString basicInfo.startDate)
-            )
+        , hr [ class "mt-2 border border-alt-1 border-dashed" ] []
         ]
 
 
@@ -575,11 +615,14 @@ extendedMediaDecoder =
 
 basicMediaDecoder : Decoder BasicInfo
 basicMediaDecoder =
-    Decode.map4 BasicInfo
+    Decode.map7 BasicInfo
         (field "id" int)
         (field "title" titleDecoder)
         (field "startDate" startDateDecoder)
         (field "coverImage" coverImageDecoder)
+        (field "format" string)
+        (field "episodes" (nullable int))
+        (field "description" string)
 
 
 coverImageDecoder : Decoder String
@@ -671,6 +714,9 @@ queryMedia =
     , GraphQl.field "coverImage"
         |> GraphQl.withSelectors
             [ GraphQl.field "large" ]
+    , GraphQl.field "format"
+    , GraphQl.field "episodes"
+    , GraphQl.field "description"
     ]
 
 
@@ -712,6 +758,21 @@ requestSequelAnime values =
 
 
 -- Helper
+
+
+removeBr : String -> String
+removeBr string =
+    userReplace "<br>" (\_ -> "") string
+
+
+userReplace : String -> (Regex.Match -> String) -> String -> String
+userReplace userRegex replacer string =
+    case Regex.fromString userRegex of
+        Nothing ->
+            string
+
+        Just regex ->
+            Regex.replace regex replacer string
 
 
 dateToString : StartDate -> String
