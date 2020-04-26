@@ -28,21 +28,11 @@ main =
         }
 
 
-type NavItem
-    = Transport
-    | Tickets
-    | Hotels
-    | Cars
-    | More
-
-
-
 -- Model
 
 
 type alias Model =
-    { activeNavItem : NavItem
-    , selectedTab : Tab
+    { selectedTab : Tab
     , selectedTitle : String
     , input : String
     , error : String
@@ -96,8 +86,7 @@ type RelationType
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { activeNavItem = Transport
-      , selectedTab = ByStoryTimeline
+    ( { selectedTab = ByStoryTimeline
       , input = ""
       , error = ""
       , animeList = []
@@ -143,8 +132,7 @@ initStartDate =
 
 
 type Msg
-    = SetNavItem NavItem
-    | SelectTab Tab
+    = SelectTab Tab
     | InputOccurred String
     | TimePassed String
     | QueryMsg QueryMsg
@@ -165,8 +153,6 @@ type QueryMsg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SetNavItem activeNav ->
-            ( { model | activeNavItem = activeNav }, Cmd.none )
 
         SelectTab tab ->
             ( { model | selectedTab = tab }, Cmd.none )
@@ -365,30 +351,6 @@ subscriptions _ =
     Sub.none
 
 
-
--- Converter
-
-
-navItemsToLabel : NavItem -> String
-navItemsToLabel navItem =
-    case navItem of
-        Transport ->
-            "Transport"
-
-        Tickets ->
-            "Tickets"
-
-        Hotels ->
-            "Hotels"
-
-        Cars ->
-            "Cars"
-
-        More ->
-            "More"
-
-
-
 -- View
 
 
@@ -549,7 +511,7 @@ viewCard basicInfo =
                 )
             , pre
                 [ class "whitespace-pre-wrap" ]
-                [ text (removeBr basicInfo.description) ]
+                (textHtml (removeBr basicInfo.description))
             ]
         , hr [ class "mt-2 border border-alt-1 border-dashed" ] []
         ]
@@ -793,6 +755,15 @@ requestSequelAnime values =
 
 
 -- Helper
+
+textHtml : String -> List (Html.Html msg)
+textHtml t =
+    case Html.Parser.run t of
+        Ok nodes ->
+            Html.Parser.Util.toVirtualDom nodes
+
+        Err _ ->
+            []
 
 
 removeBr : String -> String
