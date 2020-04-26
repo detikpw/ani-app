@@ -65,6 +65,7 @@ type alias BasicInfo =
     , format : String
     , episodes : Maybe Int
     , description : String
+    , studio : String
     }
 
 
@@ -123,7 +124,7 @@ initBasicInfo =
     -- , format = ""
     -- , description = ""
     -- }
-    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing) "" "" Nothing ""
+    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing) "" "" Nothing "" ""
 
 
 initTitle : Title
@@ -223,6 +224,10 @@ updateQuery query model =
                     )
 
                 ( _, Err e ) ->
+                    let
+                        a =
+                            Debug.log "QueryAnimelistbysearch" e
+                    in
                     ( { model | error = "Oops somthing went wrong" }, Cmd.none )
 
         QueryRelatedAnime (Ok value) ->
@@ -538,6 +543,7 @@ viewCard basicInfo =
             , pre [ class "whitespace-pre-wrap" ]
                 ([]
                     ++ viewInfoDetail "title" basicInfo.title.romaji
+                    ++ viewInfoDetail "studio" basicInfo.studio
                     ++ viewInfoDetail "start date" (dateToString basicInfo.startDate)
                     ++ viewInfoDetail "format" basicInfo.format
                     ++ viewInfoDetail "episodes"
@@ -615,7 +621,7 @@ extendedMediaDecoder =
 
 basicMediaDecoder : Decoder BasicInfo
 basicMediaDecoder =
-    Decode.map7 BasicInfo
+    Decode.map8 BasicInfo
         (field "id" int)
         (field "title" titleDecoder)
         (field "startDate" startDateDecoder)
@@ -623,6 +629,32 @@ basicMediaDecoder =
         (field "format" string)
         (field "episodes" (nullable int))
         (field "description" string)
+        (field "studios" mainStudioDecoder)
+
+
+mainStudioDecoder : Decoder String
+mainStudioDecoder =
+    Decode.map setStudio studioListDecoder
+
+
+setStudio : List String -> String
+setStudio value =
+    case value of
+        [] ->
+            ""
+
+        studios ->
+            Maybe.withDefault "" (List.head studios)
+
+
+studioListDecoder : Decoder (List String)
+studioListDecoder =
+    field "nodes" (Decode.list studioDecoder)
+
+
+studioDecoder : Decoder String
+studioDecoder =
+    field "name" string
 
 
 coverImageDecoder : Decoder String
@@ -717,6 +749,13 @@ queryMedia =
     , GraphQl.field "format"
     , GraphQl.field "episodes"
     , GraphQl.field "description"
+    , GraphQl.field "studios"
+        |> GraphQl.withArgument "isMain" (GraphQl.bool True)
+        |> GraphQl.withSelectors
+            [ GraphQl.field "nodes"
+                |> GraphQl.withSelectors
+                    [ GraphQl.field "name" ]
+            ]
     ]
 
 
