@@ -224,10 +224,6 @@ updateQuery query model =
                     )
 
                 ( _, Err e ) ->
-                    let
-                        a =
-                            Debug.log "QueryAnimelistbysearch" e
-                    in
                     ( { model | error = "Oops somthing went wrong" }, Cmd.none )
 
         QueryRelatedAnime (Ok value) ->

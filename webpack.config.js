@@ -33,7 +33,7 @@ module.exports = env => {
           options: {
             debug: !env.production,
             pathToElm: 'node_modules/.bin/elm',
-            // optimize: env.production
+            optimize: env.production
           }
         },
       ]
@@ -51,7 +51,6 @@ module.exports = env => {
       minimizer: [
         new TerserPlugin(),
         new OptimizeCSSAssetsPlugin(),
-        new ClosurePlugin({mode: 'STANDARD'})
       ],
     },
     devServer: {
