@@ -28,6 +28,7 @@ main =
         }
 
 
+
 -- Model
 
 
@@ -148,7 +149,6 @@ type QueryMsg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-
         SelectTab tab ->
             ( { model | selectedTab = tab }, Cmd.none )
 
@@ -240,7 +240,7 @@ updateQuery query model =
 
                 currentTitle =
                     List.head current
-                        |> Maybe.map(.title >> .romaji)
+                        |> Maybe.map (.title >> .romaji)
                         |> Maybe.withDefault ""
             in
             ( { model
@@ -342,6 +342,7 @@ subscriptions _ =
     Sub.none
 
 
+
 -- View
 
 
@@ -429,7 +430,7 @@ viewMain model =
     div [ class "flex flex-col items-center flex-grow bg-bg-1 px-4" ]
         [ div [ class "w-11/12 text-left text-primary text-lg mt-4" ]
             [ text "AniChrono"
-            , div [ class "text-sm" ] [ text "Get anime list in the order release date or story timeline" ]
+            , div [ class "text-sm" ] [ text "Find anime series by  release date or story timeline order" ]
             ]
         , viewInput model
         , div [ class "text-alt-2 w-10/12 mt-2 px-2" ] [ text model.selectedTitle ]
@@ -746,6 +747,7 @@ requestSequelAnime values =
 
 
 -- Helper
+
 
 textHtml : String -> List (Html.Html msg)
 textHtml t =
