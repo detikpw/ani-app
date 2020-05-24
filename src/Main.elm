@@ -91,11 +91,6 @@ init _ =
       , error = ""
       , animeList = []
       , relatedAnime = []
-
-      --   , relatedAnime = [
-      --       BasicInfo 0 (Title "Test" Nothing) (StartDate Nothing Nothing Nothing)
-      --       "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx101922-PEn1CTc93blC.jpg"
-      --   ]
       , relationsEdge = []
       , selectedTitle = ""
       }
@@ -105,15 +100,15 @@ init _ =
 
 initBasicInfo : BasicInfo
 initBasicInfo =
-    -- { id = 0
-    -- , title = initTitle
-    -- , startDate = initStartDate
-    -- , coverImage = ""
-    -- , episodes = 0
-    -- , format = ""
-    -- , description = ""
-    -- }
-    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing) "" "" Nothing "" ""
+    { id = 0
+    , title = initTitle
+    , startDate = initStartDate
+    , coverImage = ""
+    , format = ""
+    , description = ""
+    , studio = ""
+    , episodes = Nothing
+    }
 
 
 initTitle : Title
