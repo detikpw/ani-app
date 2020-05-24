@@ -25,6 +25,9 @@ module.exports = {
       },
       inset: {
         '1': '100%'
+      },
+      transitionDelay: {
+        '0': '0ms',
       }
     },
   },

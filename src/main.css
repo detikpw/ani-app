@@ -25,4 +25,34 @@ pre span {
   font-size: 0.625rem;
 }
 
+.progress {
+  @apply absolute w-full h-1 overflow-hidden;
+}
+
+.progress .line {
+  width:150%;
+  @apply absolute opacity-50 bg-alt-2 h-1;
+}
+
+.progress .subline{
+  @apply absolute bg-alt-2 h-1;
+}
+
 @tailwind utilities;
+
+/* https://stackoverflow.com/questions/34773266/how-to-write-css-keyframes-to-indeterminate-material-design-progress-bar */
+@keyframes increase {
+  from { left: -5%; width: 5%; }
+  to { left: 130%; width: 100%;}
+}
+@keyframes decrease {
+  from { left: -80%; width: 80%; }
+  to { left: 110%; width: 10%;}
+}
+
+.inc{
+  animation: increase 2s infinite;
+}
+.dec{
+  animation: decrease 2s 0.5s infinite;
+}
