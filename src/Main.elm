@@ -28,6 +28,7 @@ main =
         }
 
 
+
 -- Model
 
 
@@ -91,11 +92,6 @@ init _ =
       , error = ""
       , animeList = []
       , relatedAnime = []
-
-      --   , relatedAnime = [
-      --       BasicInfo 0 (Title "Test" Nothing) (StartDate Nothing Nothing Nothing)
-      --       "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx101922-PEn1CTc93blC.jpg"
-      --   ]
       , relationsEdge = []
       , selectedTitle = ""
       }
@@ -105,15 +101,15 @@ init _ =
 
 initBasicInfo : BasicInfo
 initBasicInfo =
-    -- { id = 0
-    -- , title = initTitle
-    -- , startDate = initStartDate
-    -- , coverImage = ""
-    -- , episodes = 0
-    -- , format = ""
-    -- , description = ""
-    -- }
-    BasicInfo 0 (Title "" Nothing) (StartDate Nothing Nothing Nothing) "" "" Nothing "" ""
+    { id = 0
+    , title = initTitle
+    , startDate = initStartDate
+    , coverImage = ""
+    , format = ""
+    , description = ""
+    , studio = ""
+    , episodes = Nothing
+    }
 
 
 initTitle : Title
@@ -153,7 +149,6 @@ type QueryMsg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-
         SelectTab tab ->
             ( { model | selectedTab = tab }, Cmd.none )
 
@@ -229,15 +224,14 @@ updateQuery query model =
 
                 relations =
                     edges
-                        |> Maybe.andThen
+                        |> Maybe.map
                             (\items ->
-                                Just
-                                    ( List.filter (\edge -> .relationType edge == Prequel) items
-                                        |> List.map .node
-                                    , [ node ]
-                                    , List.filter (\edge -> .relationType edge == Sequel) items
-                                        |> List.map .node
-                                    )
+                                ( List.filter (\edge -> .relationType edge == Prequel) items
+                                    |> List.map .node
+                                , [ node ]
+                                , List.filter (\edge -> .relationType edge == Sequel) items
+                                    |> List.map .node
+                                )
                             )
                         |> Maybe.withDefault ( [], [], [] )
 
@@ -246,10 +240,7 @@ updateQuery query model =
 
                 currentTitle =
                     List.head current
-                        |> Maybe.andThen
-                            (\basicInfo ->
-                                Just (.romaji (.title basicInfo))
-                            )
+                        |> Maybe.map (.title >> .romaji)
                         |> Maybe.withDefault ""
             in
             ( { model
@@ -351,6 +342,7 @@ subscriptions _ =
     Sub.none
 
 
+
 -- View
 
 
@@ -438,7 +430,7 @@ viewMain model =
     div [ class "flex flex-col items-center flex-grow bg-bg-1 px-4" ]
         [ div [ class "w-11/12 text-left text-primary text-lg mt-4" ]
             [ text "AniChrono"
-            , div [ class "text-sm" ] [ text "Get anime list in the order release date or story timeline" ]
+            , div [ class "text-sm" ] [ text "Find anime series by  release date or story timeline order" ]
             ]
         , viewInput model
         , div [ class "text-alt-2 w-10/12 mt-2 px-2" ] [ text model.selectedTitle ]
@@ -505,7 +497,7 @@ viewCard basicInfo =
                     ++ viewInfoDetail "start date" (dateToString basicInfo.startDate)
                     ++ viewInfoDetail "format" basicInfo.format
                     ++ viewInfoDetail "episodes"
-                        (Maybe.andThen (Just << String.fromInt) basicInfo.episodes
+                        (Maybe.map String.fromInt basicInfo.episodes
                             |> Maybe.withDefault ""
                         )
                 )
@@ -755,6 +747,7 @@ requestSequelAnime values =
 
 
 -- Helper
+
 
 textHtml : String -> List (Html.Html msg)
 textHtml t =
