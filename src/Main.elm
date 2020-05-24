@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Accessibility.Role exposing (progressBar)
 import Array exposing (Array)
 import Browser
 import Compare exposing (by, concat)
@@ -40,6 +41,7 @@ type alias Model =
     , animeList : List Media
     , relatedAnime : List BasicInfo
     , relationsEdge : List Edge
+    , showProgressBar : Bool
     }
 
 
@@ -94,6 +96,7 @@ init _ =
       , relatedAnime = []
       , relationsEdge = []
       , selectedTitle = ""
+      , showProgressBar = False
       }
     , Cmd.none
     )
@@ -169,7 +172,7 @@ update msg model =
 
         TimePassed debouncedString ->
             if debouncedString == model.input then
-                ( model, requestAnimeBySearch model.input )
+                ( { model | showProgressBar = True }, requestAnimeBySearch model.input )
 
             else
                 ( model, Cmd.none )
@@ -181,6 +184,9 @@ update msg model =
             ( { model
                 | animeList = []
                 , input = title
+
+                -- next iteration use Task
+                , showProgressBar = True
               }
             , requestAnimeByIds [ id ]
             )
@@ -192,7 +198,10 @@ updateQuery query model =
         QueryAnimeListBySearch arg ->
             case ( model.input, arg ) of
                 ( "", _ ) ->
-                    ( { model | animeList = [] }
+                    ( { model
+                        | animeList = []
+                        , showProgressBar = False
+                      }
                     , Cmd.none
                     )
 
@@ -200,12 +209,18 @@ updateQuery query model =
                     ( { model
                         | animeList = value
                         , error = ""
+                        , showProgressBar = False
                       }
                     , Cmd.none
                     )
 
                 ( _, Err e ) ->
-                    ( { model | error = "Oops somthing went wrong" }, Cmd.none )
+                    ( { model
+                        | error = "Oops somthing went wrong"
+                        , showProgressBar = False
+                      }
+                    , Cmd.none
+                    )
 
         QueryRelatedAnime (Ok value) ->
             let
@@ -248,6 +263,7 @@ updateQuery query model =
                 , selectedTitle = currentTitle
                 , input = ""
                 , error = ""
+                , showProgressBar = False
               }
             , Cmd.batch
                 [ case prequel of
@@ -451,10 +467,24 @@ viewInput model =
                 , onInput InputOccurred
                 ]
                 []
+            , viewProgress model.showProgressBar
             , span [ class "text-xs text-alt-4 px-2" ] [ text model.error ]
             , viewAutoComplete model.animeList
             ]
         ]
+
+
+viewProgress : Bool -> Html msg
+viewProgress showProgress =
+    if showProgress then
+        div [ class "progress", progressBar ]
+            [ div [ class "line" ] []
+            , div [ class "subline inc" ] []
+            , div [ class "subline dec" ] []
+            ]
+
+    else
+        Html.text ""
 
 
 viewTabs : Model -> Html Msg

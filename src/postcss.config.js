@@ -16,8 +16,8 @@ module.exports = ({ options }) => {
   return {
     plugins: [
     require('tailwindcss'),
-    require('autoprefixer'),
-    options.mode === 'production' ? purgecss : undefined
+    options.mode === 'production' ? purgecss : undefined,
+    require('autoprefixer')({browsers: ['last 2 versions', 'iOS >= 8']}),
     ]
   }
 }
